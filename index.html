@@ -1,0 +1,831 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Positiva — Controle de Diagnóstico Corporal</title>
+<script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
+<style>
+:root {
+  --navy:  #212B37;
+  --blue:  #34425C;
+  --green: #BEF575;
+  --card:  #263347;
+  --dark:  #161E29;
+  --gray-l:#BBC0C9;
+  --gray-m:#788192;
+  --white: #FFF;
+  --red:   #FF6B6B;
+  --yellow:#FFD93D;
+  --orange:#FF9F43;
+  --urgent:#FF4757;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{font-family:'Avenir','Century Gothic','Trebuchet MS',sans-serif;background:var(--navy);color:var(--white);min-height:100vh}
+
+/* HEADER */
+.header{background:var(--dark);border-bottom:3px solid var(--green);padding:14px 28px;display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap}
+.header h1{font-size:1.25rem;font-weight:900;font-style:italic;letter-spacing:1px}
+.header h1 span{color:var(--green)}
+.header .sub{font-size:.72rem;color:var(--gray-m);margin-top:2px;font-style:italic}
+.header-right{display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.header-date{font-size:.72rem;color:var(--gray-m);text-align:right}
+.btn-settings{background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.15);color:var(--gray-l);border-radius:7px;padding:7px 14px;font-family:inherit;font-size:.78rem;cursor:pointer;display:flex;align-items:center;gap:6px;transition:background .2s}
+.btn-settings:hover{background:rgba(255,255,255,.12)}
+.btn-settings.active{border-color:var(--green);color:var(--green)}
+
+/* SETTINGS PANEL */
+.settings-panel{background:var(--dark);border-bottom:1px solid rgba(255,255,255,.07);padding:0 28px;max-height:0;overflow:hidden;transition:max-height .35s ease,padding .35s ease}
+.settings-panel.open{max-height:400px;padding:20px 28px}
+.settings-title{font-size:.68rem;text-transform:uppercase;letter-spacing:1.5px;color:var(--gray-m);font-style:italic;margin-bottom:16px}
+.webhook-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(280px,1fr));gap:14px}
+.webhook-item label{font-size:.66rem;text-transform:uppercase;letter-spacing:1px;display:flex;align-items:center;gap:7px;margin-bottom:6px;color:var(--gray-l)}
+.webhook-item label .dot{width:8px;height:8px;border-radius:50%;flex-shrink:0}
+.dot-urgente{background:var(--urgent)}
+.dot-amarelo{background:var(--yellow)}
+.dot-laranja{background:var(--orange)}
+.dot-vermelho{background:var(--red)}
+.wh-input{width:100%;background:var(--card);border:1px solid rgba(255,255,255,.1);color:var(--white);padding:8px 12px;border-radius:6px;font-family:inherit;font-size:.8rem;outline:none;transition:border-color .2s}
+.wh-input:focus{border-color:var(--green)}
+.wh-input::placeholder{color:var(--gray-m)}
+.wh-input.wh-ok{border-color:rgba(190,245,117,.4)}
+.settings-save{margin-top:16px;display:flex;align-items:center;gap:12px}
+.btn-save-wh{background:var(--green);color:var(--navy);border:none;border-radius:7px;padding:8px 20px;font-family:inherit;font-size:.8rem;font-weight:900;cursor:pointer}
+.wh-saved-msg{font-size:.72rem;color:var(--green);font-style:italic;opacity:0;transition:opacity .3s}
+.wh-saved-msg.show{opacity:1}
+
+/* UPLOAD */
+.upload-section{background:var(--card);border:1.5px dashed rgba(190,245,117,.3);border-radius:12px;padding:22px 28px;margin:20px 28px;display:flex;gap:20px;align-items:flex-end;flex-wrap:wrap;transition:border-color .3s}
+.upload-section.loaded{border-color:rgba(190,245,117,.5);background:rgba(190,245,117,.04)}
+.upload-top{display:flex;align-items:center;justify-content:space-between;width:100%;flex-wrap:wrap;gap:8px}
+.upload-loaded-info{font-size:.74rem;color:var(--green);font-style:italic}
+.upload-loaded-info span{color:var(--gray-m)}
+.upload-files{display:flex;gap:16px;flex:1;flex-wrap:wrap}
+.upload-box{flex:1;min-width:200px}
+.upload-box label{font-size:.66rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray-l);display:block;margin-bottom:7px;font-style:italic}
+.file-btn{display:flex;align-items:center;gap:8px;background:var(--dark);border:1px solid rgba(255,255,255,.13);border-radius:7px;padding:9px 14px;cursor:pointer;width:100%;color:var(--gray-l);font-family:inherit;font-size:.82rem;transition:border-color .2s}
+.file-btn:hover{border-color:var(--green)}
+.file-btn.ok{border-color:var(--green);color:var(--green)}
+input[type=file]{display:none}
+.btn-process{background:var(--green);color:var(--navy);border:none;border-radius:8px;padding:10px 24px;font-family:inherit;font-size:.88rem;font-weight:900;font-style:italic;cursor:pointer;transition:opacity .2s,transform .1s;white-space:nowrap;align-self:flex-end}
+.btn-process:hover{opacity:.88;transform:translateY(-1px)}
+.btn-process:disabled{opacity:.3;cursor:not-allowed;transform:none}
+.btn-trocar{background:transparent;border:1px solid rgba(255,255,255,.2);color:var(--gray-l);border-radius:7px;padding:7px 14px;font-family:inherit;font-size:.78rem;cursor:pointer;transition:border-color .2s}
+.btn-trocar:hover{border-color:var(--gray-l)}
+
+/* CARDS */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(148px,1fr));gap:12px;padding:20px 28px 0}
+.kpi{background:var(--card);border-radius:10px;padding:15px;border-left:4px solid var(--blue);cursor:pointer;transition:transform .15s,background .2s}
+.kpi:hover{transform:translateY(-2px)}
+.kpi.active{background:rgba(190,245,117,.07)}
+.kpi .lbl{font-size:.62rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray-l);margin-bottom:7px;font-style:italic}
+.kpi .val{font-size:1.9rem;font-weight:900;font-style:italic;line-height:1}
+.kpi .sub{font-size:.62rem;color:var(--gray-m);margin-top:4px}
+.kpi.k-todos .val{color:var(--white)}
+.kpi.k-urgente{border-left-color:var(--urgent)} .kpi.k-urgente .val{color:var(--urgent)}
+.kpi.k-verde{border-left-color:var(--green)}    .kpi.k-verde .val{color:var(--green)}
+.kpi.k-amarelo{border-left-color:var(--yellow)} .kpi.k-amarelo .val{color:var(--yellow)}
+.kpi.k-laranja{border-left-color:var(--orange)} .kpi.k-laranja .val{color:var(--orange)}
+.kpi.k-vermelho{border-left-color:var(--red)}   .kpi.k-vermelho .val{color:var(--red)}
+
+/* FILTER BAR */
+.filter-bar{padding:14px 28px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.search-box{background:var(--card);border:1px solid rgba(255,255,255,.12);color:var(--white);padding:8px 13px;border-radius:7px;font-family:inherit;font-size:.82rem;outline:none;width:220px;transition:border-color .2s}
+.search-box:focus{border-color:var(--green)}
+.search-box::placeholder{color:var(--gray-m)}
+.result-count{font-size:.72rem;color:var(--gray-m);font-style:italic}
+.btn-dispatch-all{background:rgba(190,245,117,.1);border:1.5px solid var(--green);color:var(--green);border-radius:7px;padding:8px 16px;font-family:inherit;font-size:.78rem;font-weight:700;font-style:italic;cursor:pointer;transition:background .2s;margin-left:auto;white-space:nowrap}
+.btn-dispatch-all:hover{background:rgba(190,245,117,.2)}
+
+/* TABLE */
+.table-wrap{padding:14px 28px 32px;overflow-x:auto}
+.data-table{width:100%;border-collapse:collapse;font-size:.82rem}
+.data-table th{background:var(--blue);color:var(--gray-l);text-transform:uppercase;font-size:.61rem;letter-spacing:1px;padding:10px 12px;text-align:left;font-style:italic;white-space:nowrap}
+.data-table th.sortable{cursor:pointer;user-select:none}
+.data-table th.sortable:hover{color:var(--white)}
+.data-table td{padding:10px 12px;border-bottom:1px solid rgba(255,255,255,.05);vertical-align:middle}
+.data-table tr:hover td{background:rgba(255,255,255,.02)}
+
+.badge{display:inline-block;padding:3px 9px;border-radius:20px;font-size:.62rem;font-weight:900;font-style:italic;letter-spacing:.5px;white-space:nowrap}
+.badge-urgente{background:rgba(255,71,87,.13);color:var(--urgent);border:1px solid var(--urgent)}
+.badge-verde{background:rgba(190,245,117,.1);color:var(--green);border:1px solid var(--green)}
+.badge-amarelo{background:rgba(255,217,61,.1);color:var(--yellow);border:1px solid var(--yellow)}
+.badge-laranja{background:rgba(255,159,67,.1);color:var(--orange);border:1px solid var(--orange)}
+.badge-vermelho{background:rgba(255,107,107,.1);color:var(--red);border:1px solid var(--red)}
+
+.dias-num{font-weight:900;font-style:italic}
+.dias-urgente{color:var(--urgent)} .dias-verde{color:var(--green)} .dias-amarelo{color:var(--yellow)} .dias-laranja{color:var(--orange)} .dias-vermelho{color:var(--red)}
+
+.nome-full{font-weight:700;font-size:.84rem}
+.id-text{font-size:.68rem;color:var(--gray-m);margin-top:2px}
+.cpf-mono{font-family:monospace;font-size:.72rem;color:var(--gray-m)}
+.email-text{font-size:.74rem;color:var(--gray-m)}
+.phone-link{color:var(--gray-l);text-decoration:none;font-size:.76rem}
+.phone-link:hover{color:var(--green)}
+
+/* NOTA */
+.note-cell{min-width:140px;max-width:190px}
+.note-preview{font-size:.75rem;color:var(--gray-m);cursor:pointer;display:block;min-height:22px;padding:3px 6px;border-radius:5px;border:1px solid transparent;transition:border-color .2s,background .2s;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-style:italic}
+.note-preview:hover{border-color:rgba(255,255,255,.15);background:rgba(255,255,255,.04);color:var(--gray-l)}
+.note-preview.empty{color:rgba(255,255,255,.22)}
+.note-textarea{width:100%;min-width:160px;background:var(--dark);border:1px solid var(--green);color:var(--white);padding:5px 8px;border-radius:5px;font-family:inherit;font-size:.75rem;resize:vertical;min-height:54px;outline:none;display:none}
+
+/* CHECKBOX */
+.cb-wrap{display:flex;align-items:center;justify-content:center}
+.cb{width:17px;height:17px;accent-color:var(--green);cursor:pointer;border-radius:4px}
+.row-selected td{background:rgba(190,245,117,.06)!important}
+.sel-bar{display:none;align-items:center;gap:10px;padding:8px 14px;background:rgba(190,245,117,.08);border:1px solid rgba(190,245,117,.25);border-radius:8px;font-size:.78rem;color:var(--green);font-style:italic;font-weight:700}
+.sel-bar.visible{display:flex}
+.sel-bar span{color:var(--gray-l);font-weight:400}
+
+/* FIRE BUTTON */
+.btn-fire{background:rgba(190,245,117,.08);border:1px solid rgba(190,245,117,.3);color:var(--green);border-radius:6px;padding:5px 11px;font-family:inherit;font-size:.7rem;font-weight:700;font-style:italic;cursor:pointer;transition:background .15s;white-space:nowrap}
+.btn-fire:hover:not(:disabled){background:rgba(190,245,117,.2)}
+.btn-fire.sent{opacity:.5;cursor:default}
+.btn-fire.error{border-color:var(--red);color:var(--red);background:rgba(255,107,107,.08)}
+.btn-fire.no-url{border-color:rgba(255,255,255,.15);color:var(--gray-m);cursor:not-allowed}
+.btn-fire:disabled{opacity:.4;cursor:not-allowed}
+
+/* EMPTY */
+.empty-state{text-align:center;padding:60px 28px;color:var(--gray-m)}
+.empty-state .icon{font-size:3rem;margin-bottom:14px}
+.empty-state h3{font-size:1.1rem;margin-bottom:8px;font-style:italic;color:var(--gray-l)}
+.empty-state p{font-size:.82rem;line-height:1.7}
+
+/* TOAST */
+#toast{position:fixed;bottom:22px;right:22px;background:var(--card);border:1px solid rgba(255,255,255,.15);border-radius:10px;padding:11px 16px;font-size:.8rem;color:var(--white);max-width:300px;z-index:999;opacity:0;transform:translateY(8px);transition:opacity .3s,transform .3s;pointer-events:none}
+#toast.show{opacity:1;transform:translateY(0)}
+#toast.ok{border-color:var(--green);color:var(--green)}
+#toast.err{border-color:var(--red);color:var(--red)}
+
+/* MODAL */
+.modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.6);display:none;align-items:center;justify-content:center;z-index:200}
+.modal-overlay.open{display:flex}
+.modal{background:var(--card);border-radius:12px;padding:26px;max-width:440px;width:90%;border:1px solid rgba(255,255,255,.1)}
+.modal h3{font-size:.95rem;font-style:italic;margin-bottom:12px;color:var(--green)}
+.modal p{font-size:.82rem;color:var(--gray-l);line-height:1.6;margin-bottom:16px}
+.modal-actions{display:flex;gap:10px;justify-content:flex-end}
+.btn-cancel{background:transparent;border:1px solid rgba(255,255,255,.18);color:var(--gray-l);border-radius:7px;padding:8px 16px;font-family:inherit;font-size:.82rem;cursor:pointer}
+.btn-confirm{background:var(--green);border:none;color:var(--navy);border-radius:7px;padding:8px 16px;font-family:inherit;font-size:.82rem;font-weight:900;cursor:pointer}
+
+@media(max-width:640px){
+  .header,.upload-section,.cards-grid,.filter-bar,.table-wrap,.settings-panel.open{padding-left:14px;padding-right:14px}
+  .cards-grid{grid-template-columns:repeat(2,1fr)}
+  .search-box{width:100%}
+}
+</style>
+</head>
+<body>
+
+<!-- HEADER -->
+<header class="header">
+  <div>
+    <h1>POSITIVA <span>/ DIAGNÓSTICO CORPORAL</span></h1>
+    <div class="sub">Controle de avaliações físicas — alunos ativos</div>
+  </div>
+  <div class="header-right">
+    <div class="header-date" id="headerDate"></div>
+    <button class="btn-settings" id="btnSettings" onclick="toggleSettings()">⚙ Configurar Webhooks</button>
+  </div>
+</header>
+
+<!-- SETTINGS PANEL -->
+<div class="settings-panel" id="settingsPanel">
+  <div class="settings-title">URLs de disparo por status — cada status envia para um endpoint diferente</div>
+  <div class="webhook-grid">
+    <div class="webhook-item">
+      <label><span class="dot dot-urgente"></span>Sem Diagnóstico</label>
+      <input class="wh-input" id="wh_urgente" type="text" placeholder="https://…/webhook/sem-diagnostico">
+    </div>
+    <div class="webhook-item">
+      <label><span class="dot dot-amarelo"></span>Atenção — 30 a 45 dias</label>
+      <input class="wh-input" id="wh_amarelo" type="text" placeholder="https://…/webhook/atencao">
+    </div>
+    <div class="webhook-item">
+      <label><span class="dot dot-laranja"></span>Atrasado — 45 a 60 dias</label>
+      <input class="wh-input" id="wh_laranja" type="text" placeholder="https://…/webhook/atrasado">
+    </div>
+    <div class="webhook-item">
+      <label><span class="dot dot-vermelho"></span>Crítico — mais de 60 dias</label>
+      <input class="wh-input" id="wh_vermelho" type="text" placeholder="https://…/webhook/critico">
+    </div>
+  </div>
+  <div class="settings-save">
+    <button class="btn-save-wh" onclick="saveWebhooks()">Salvar configurações</button>
+    <span class="wh-saved-msg" id="whSavedMsg">✓ Salvo!</span>
+  </div>
+</div>
+
+<!-- UPLOAD -->
+<div class="upload-section" id="uploadSection">
+  <div class="upload-top" id="uploadTop" style="display:none">
+    <div class="upload-loaded-info" id="loadedInfo"></div>
+    <button class="btn-trocar" onclick="resetUpload()">↺ Trocar arquivos</button>
+  </div>
+  <div class="upload-files" id="uploadFiles">
+    <div class="upload-box">
+      <label>1. Alunos ativos</label>
+      <div class="file-btn" id="btnClientes" onclick="document.getElementById('fileClientes').click()">
+        <span id="iconClientes">📋</span>
+        <span id="labelClientes">FiltroClientes.xlsx</span>
+      </div>
+      <input type="file" id="fileClientes" accept=".xlsx,.xls,.csv">
+    </div>
+    <div class="upload-box">
+      <label>2. Diagnósticos realizados</label>
+      <div class="file-btn" id="btnDiag" onclick="document.getElementById('fileDiag').click()">
+        <span id="iconDiag">📊</span>
+        <span id="labelDiag">Data export.xls</span>
+      </div>
+      <input type="file" id="fileDiag" accept=".xlsx,.xls,.csv">
+    </div>
+  </div>
+  <button class="btn-process" id="btnProcess" onclick="processFiles()" disabled>▶ Gerar Dashboard</button>
+</div>
+
+<!-- CARDS -->
+<div class="cards-grid" id="cardsGrid" style="display:none">
+  <div class="kpi k-todos" onclick="setFilter('todos')">
+    <div class="lbl">Total Ativos</div><div class="val" id="cTodos">0</div><div class="sub">alunos na base</div>
+  </div>
+  <div class="kpi k-urgente" onclick="setFilter('urgente')">
+    <div class="lbl">Sem Diagnóstico</div><div class="val" id="cUrgente">0</div><div class="sub">nunca avaliados</div>
+  </div>
+  <div class="kpi k-verde" onclick="setFilter('verde')">
+    <div class="lbl">Em Dia</div><div class="val" id="cVerde">0</div><div class="sub">menos de 30 dias</div>
+  </div>
+  <div class="kpi k-amarelo" onclick="setFilter('amarelo')">
+    <div class="lbl">Atenção</div><div class="val" id="cAmarelo">0</div><div class="sub">30 a 45 dias</div>
+  </div>
+  <div class="kpi k-laranja" onclick="setFilter('laranja')">
+    <div class="lbl">Atrasado</div><div class="val" id="cLaranja">0</div><div class="sub">45 a 60 dias</div>
+  </div>
+  <div class="kpi k-vermelho" onclick="setFilter('vermelho')">
+    <div class="lbl">Crítico</div><div class="val" id="cVermelho">0</div><div class="sub">mais de 60 dias</div>
+  </div>
+</div>
+
+<!-- FILTER BAR -->
+<div class="filter-bar" id="filterBar" style="display:none">
+  <input class="search-box" type="text" id="searchBox" placeholder="Buscar nome, CPF ou e-mail…" oninput="applyFilters()">
+  <span class="result-count" id="resultCount"></span>
+  <div class="sel-bar" id="selBar">
+    <span id="selCount">0 selecionados</span>
+    <button class="btn-dispatch-all" style="margin-left:0" onclick="openDispatchAll()">⚡ Disparar selecionados</button>
+  </div>
+  <button class="btn-dispatch-all" id="btnDispatchAll" onclick="openDispatchAll()">⚡ Disparar visíveis</button>
+</div>
+
+<!-- TABLE -->
+<div class="table-wrap" id="tableWrap" style="display:none">
+  <table class="data-table">
+    <thead>
+      <tr>
+        <th style="width:36px;text-align:center"><div class="cb-wrap"><input type="checkbox" class="cb" id="cbAll" onchange="toggleAll(this)"></div></th>
+        <th class="sortable" onclick="sortBy('nome')">Nome / ID ↕</th>
+        <th>CPF</th>
+        <th>WhatsApp</th>
+        <th>E-mail</th>
+        <th class="sortable" onclick="sortBy('dias')">Dias ↕</th>
+        <th>Último Diagnóstico</th>
+        <th>Status</th>
+        <th>Anotação</th>
+        <th>Disparo</th>
+      </tr>
+    </thead>
+    <tbody id="tableBody"></tbody>
+  </table>
+</div>
+
+<!-- EMPTY STATE -->
+<div class="empty-state" id="emptyState">
+  <div class="icon">📁</div>
+  <h3>Faça o upload dos dois arquivos</h3>
+  <p>Envie o <strong>FiltroClientes.xlsx</strong> e o <strong>Data export.xls</strong><br>
+  e clique em <em>Gerar Dashboard</em> para ver o painel completo.<br><br>
+  Os dados ficam salvos no navegador até você trocar os arquivos.</p>
+</div>
+
+<div id="toast"></div>
+
+<!-- MODAL -->
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal">
+    <h3>⚡ Disparar para alunos visíveis</h3>
+    <p>Você está prestes a disparar para <strong id="modalCount">0</strong> alunos listados na tela, cada um para o endpoint configurado pelo status. Confirma?</p>
+    <div class="modal-actions">
+      <button class="btn-cancel" onclick="closeModal()">Cancelar</button>
+      <button class="btn-confirm" onclick="dispatchAll()">Confirmar disparo</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const LS_STUDENTS = 'positiva_diag_students';
+const LS_LOADED   = 'positiva_diag_loaded';
+const LS_WH       = 'positiva_diag_webhooks';
+const LS_NOTE_PFX = 'positiva_diag_note_';
+
+let allStudents = [];
+let currentFilter = 'todos';
+let sortField = null;
+let sortAsc = true;
+let rawClientes = null;
+let rawDiag = null;
+let visibleForDispatch = [];
+
+const STATUS_LABEL = {
+  urgente:'SEM DIAGNÓSTICO', verde:'EM DIA',
+  amarelo:'ATENÇÃO', laranja:'ATRASADO', vermelho:'CRÍTICO'
+};
+
+// INIT
+document.getElementById('headerDate').textContent =
+  new Date().toLocaleDateString('pt-BR',{weekday:'long',day:'2-digit',month:'long',year:'numeric'});
+loadWebhooks();
+tryLoadFromStorage();
+
+// SETTINGS
+function toggleSettings() {
+  const panel = document.getElementById('settingsPanel');
+  const btn   = document.getElementById('btnSettings');
+  const open  = panel.classList.toggle('open');
+  btn.classList.toggle('active', open);
+}
+
+function saveWebhooks() {
+  const wh = {
+    urgente:  document.getElementById('wh_urgente').value.trim(),
+    amarelo:  document.getElementById('wh_amarelo').value.trim(),
+    laranja:  document.getElementById('wh_laranja').value.trim(),
+    vermelho: document.getElementById('wh_vermelho').value.trim()
+  };
+  localStorage.setItem(LS_WH, JSON.stringify(wh));
+  updateWhStyles();
+  const msg = document.getElementById('whSavedMsg');
+  msg.classList.add('show');
+  setTimeout(() => msg.classList.remove('show'), 2200);
+}
+
+function loadWebhooks() {
+  try {
+    const wh = JSON.parse(localStorage.getItem(LS_WH) || '{}');
+    ['urgente','amarelo','laranja','vermelho'].forEach(k => {
+      if (wh[k]) document.getElementById('wh_' + k).value = wh[k];
+    });
+    updateWhStyles();
+  } catch(e) {}
+}
+
+function updateWhStyles() {
+  ['urgente','amarelo','laranja','vermelho'].forEach(k => {
+    const el = document.getElementById('wh_' + k);
+    el.classList.toggle('wh-ok', !!el.value.trim());
+  });
+}
+
+function getWebhookUrl(status) {
+  try { return JSON.parse(localStorage.getItem(LS_WH) || '{}')[status] || ''; }
+  catch { return ''; }
+}
+
+// FILE UPLOAD
+document.getElementById('fileClientes').addEventListener('change', function(e) {
+  if (!e.target.files[0]) return;
+  rawClientes = e.target.files[0];
+  document.getElementById('labelClientes').textContent = rawClientes.name;
+  document.getElementById('btnClientes').classList.add('ok');
+  document.getElementById('iconClientes').textContent = '✅';
+  checkReady();
+});
+
+document.getElementById('fileDiag').addEventListener('change', function(e) {
+  if (!e.target.files[0]) return;
+  rawDiag = e.target.files[0];
+  document.getElementById('labelDiag').textContent = rawDiag.name;
+  document.getElementById('btnDiag').classList.add('ok');
+  document.getElementById('iconDiag').textContent = '✅';
+  checkReady();
+});
+
+function checkReady() {
+  document.getElementById('btnProcess').disabled = !(rawClientes && rawDiag);
+}
+
+function resetUpload() {
+  rawClientes = rawDiag = null;
+  ['Clientes','Diag'].forEach(n => {
+    document.getElementById('icon'+n).textContent = n==='Clientes' ? '📋' : '📊';
+    document.getElementById('label'+n).textContent = n==='Clientes' ? 'FiltroClientes.xlsx' : 'Data export.xls';
+    document.getElementById('btn'+n).classList.remove('ok');
+    document.getElementById('file'+n).value = '';
+  });
+  document.getElementById('btnProcess').disabled = true;
+  document.getElementById('uploadTop').style.display = 'none';
+  document.getElementById('uploadFiles').style.display = '';
+  document.getElementById('uploadSection').classList.remove('loaded');
+}
+
+// PROCESS
+async function processFiles() {
+  const btn = document.getElementById('btnProcess');
+  btn.textContent = '⏳ Processando…';
+  btn.disabled = true;
+  try {
+    const [dc, dd] = await Promise.all([readExcel(rawClientes), readExcel(rawDiag)]);
+    allStudents = buildStudents(dc, dd);
+    saveToStorage();
+    renderAll(true);
+    showToast('✓ Dashboard gerado com sucesso!', 'ok');
+  } catch(e) {
+    showToast('Erro ao processar: ' + e.message, 'err');
+    btn.textContent = '▶ Gerar Dashboard';
+    btn.disabled = false;
+  }
+}
+
+function readExcel(file) {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = e => {
+      try {
+        const wb = XLSX.read(e.target.result, {type:'binary', cellDates:true});
+        resolve(XLSX.utils.sheet_to_json(wb.Sheets[wb.SheetNames[0]], {defval:''}));
+      } catch(err) { reject(err); }
+    };
+    reader.onerror = reject;
+    reader.readAsBinaryString(file);
+  });
+}
+
+// BUSINESS LOGIC
+function normCPF(v) {
+  if (v === null || v === undefined) return '';
+  return String(v).replace(/[^0-9]/g,'');
+}
+
+function buildStudents(clientes, diagnosticos) {
+  const diagMap = {};
+  for (const row of diagnosticos) {
+    const cpf = normCPF(row['name']);
+    if (!cpf || cpf.length < 9) continue;
+    let dt = row['gmtCreate'];
+    if (typeof dt === 'string') dt = new Date(dt);
+    if (!(dt instanceof Date) || isNaN(dt)) continue;
+    if (!diagMap[cpf] || dt > diagMap[cpf].dt) diagMap[cpf] = {dt};
+  }
+
+  const today = new Date(); today.setHours(0,0,0,0);
+  const students = [];
+
+  for (const row of clientes) {
+    const cpf = normCPF(row['CPF (CIN)'] || row['CPF'] || '');
+    if (!cpf || cpf.length < 9) continue;
+
+    const nome      = ((row['Nome']||'') + ' ' + (row['Sobrenome']||'')).trim();
+    const telefone  = String(row['Nº do celular']||row['Celular']||'').replace(/[^0-9]/g,'');
+    const email     = String(row['E-mail']||row['Email']||'');
+    const idCliente = String(row['ID do cliente']||row['Id do Cliente']||'');
+
+    const diag = diagMap[cpf];
+    let status, dias, ultimoDiag;
+
+    if (!diag) {
+      status = 'urgente'; dias = null; ultimoDiag = null;
+    } else {
+      const d = new Date(diag.dt.getFullYear(), diag.dt.getMonth(), diag.dt.getDate());
+      dias = Math.floor((today - d) / 86400000);
+      ultimoDiag = diag.dt.toISOString();
+      if      (dias < 30) status = 'verde';
+      else if (dias < 45) status = 'amarelo';
+      else if (dias < 60) status = 'laranja';
+      else                status = 'vermelho';
+    }
+
+    students.push({cpf, nome, telefone, email, idCliente, status, dias, ultimoDiag});
+  }
+  return students;
+}
+
+// STORAGE
+function saveToStorage() {
+  try {
+    localStorage.setItem(LS_STUDENTS, JSON.stringify(allStudents));
+    localStorage.setItem(LS_LOADED, new Date().toISOString());
+  } catch(e) {}
+}
+
+function tryLoadFromStorage() {
+  try {
+    const raw  = localStorage.getItem(LS_STUDENTS);
+    const date = localStorage.getItem(LS_LOADED);
+    if (!raw) return;
+    allStudents = JSON.parse(raw);
+    if (allStudents.length) renderAll(false, date);
+  } catch(e) {}
+}
+
+// RENDER
+function renderAll(fromUpload, loadedDate) {
+  updateCards();
+  applyFilters();
+  document.getElementById('cardsGrid').style.display  = '';
+  document.getElementById('filterBar').style.display  = '';
+  document.getElementById('tableWrap').style.display  = '';
+  document.getElementById('emptyState').style.display = 'none';
+
+  const top   = document.getElementById('uploadTop');
+  const files = document.getElementById('uploadFiles');
+  const info  = document.getElementById('loadedInfo');
+
+  if (fromUpload || loadedDate) {
+    top.style.display   = '';
+    files.style.display = 'none';
+    document.getElementById('uploadSection').classList.add('loaded');
+    const d = fromUpload ? new Date().toISOString() : loadedDate;
+    info.innerHTML = `✓ Dados carregados em <span>${fmtDateTime(d)}</span>`;
+    if (!fromUpload) document.getElementById('btnProcess').disabled = true;
+  }
+  if (fromUpload) {
+    document.getElementById('btnProcess').textContent = '▶ Gerar Dashboard';
+  }
+}
+
+function updateCards() {
+  const c = {todos:0,urgente:0,verde:0,amarelo:0,laranja:0,vermelho:0};
+  allStudents.forEach(s => { c.todos++; c[s.status]++; });
+  Object.keys(c).forEach(k => {
+    const el = document.getElementById('c' + k.charAt(0).toUpperCase() + k.slice(1));
+    if (el) el.textContent = c[k];
+  });
+}
+
+function setFilter(f) {
+  currentFilter = f;
+  document.querySelectorAll('.kpi').forEach(k => k.classList.remove('active'));
+  const el = document.querySelector('.k-' + f);
+  if (el) el.classList.add('active');
+  applyFilters();
+}
+
+function applyFilters() {
+  const q = (document.getElementById('searchBox').value||'').toLowerCase();
+  let data = allStudents.filter(s =>
+    (currentFilter==='todos' || s.status===currentFilter) &&
+    (!q || s.nome.toLowerCase().includes(q) || s.cpf.includes(q) || s.email.toLowerCase().includes(q))
+  );
+  if (sortField) {
+    data = [...data].sort((a,b) => {
+      let va = a[sortField], vb = b[sortField];
+      if (va===null) va = sortAsc ? Infinity : -Infinity;
+      if (vb===null) vb = sortAsc ? Infinity : -Infinity;
+      return sortAsc ? (va>vb?1:-1) : (va<vb?1:-1);
+    });
+  }
+  renderTable(data);
+  document.getElementById('resultCount').textContent =
+    `${data.length} aluno${data.length!==1?'s':''} listado${data.length!==1?'s':''}`;
+}
+
+function sortBy(f) {
+  if (sortField===f) sortAsc=!sortAsc; else {sortField=f; sortAsc=true;}
+  applyFilters();
+}
+
+function renderTable(data) {
+  const tbody = document.getElementById('tableBody');
+  if (!data.length) {
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;padding:32px;color:var(--gray-m);font-style:italic">Nenhum aluno encontrado</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = data.map(s => {
+    const note   = (localStorage.getItem(LS_NOTE_PFX + s.cpf) || '').replace(/"/g,'&quot;').replace(/</g,'&lt;');
+    const isSent = !!sessionStorage.getItem('sent_' + s.cpf);
+    const whUrl  = getWebhookUrl(s.status);
+    const noUrl  = !whUrl && s.status !== 'verde';
+
+    const diasHtml = s.dias === null
+      ? `<span class="dias-num dias-urgente">—</span>`
+      : `<span class="dias-num dias-${s.status}">${s.dias}d</span>`;
+
+    const diagHtml = s.ultimoDiag
+      ? fmtDate(s.ultimoDiag)
+      : `<span style="color:var(--urgent);font-style:italic;font-size:.74rem">Nunca realizado</span>`;
+
+    const telHtml = s.telefone
+      ? `<a class="phone-link" href="https://wa.me/55${s.telefone}" target="_blank">📱 ${fmtPhone(s.telefone)}</a>`
+      : `<span style="color:var(--gray-m);font-size:.72rem">—</span>`;
+
+    const fireCls   = 'btn-fire' + (isSent?' sent':'') + (noUrl?' no-url':'');
+    const fireLabel = isSent ? '✓ Enviado' : (noUrl ? '⚠ Sem URL' : '⚡ Disparar');
+    const fireDisabled = isSent || noUrl ? 'disabled' : '';
+    const fireClick = (!isSent && !noUrl) ? `onclick='fireWebhook(${JSON.stringify(s)},this)'` : '';
+    const fireTitle = noUrl ? 'Configure o webhook para este status em ⚙ Configurar Webhooks' : '';
+
+    return `<tr data-cpf="${s.cpf}">
+      <td style="text-align:center"><div class="cb-wrap"><input type="checkbox" class="cb row-cb" data-cpf="${s.cpf}" onchange="onRowCheck(this)"></div></td>
+      <td>
+        <div class="nome-full">${escHtml(s.nome)||'—'}</div>
+        <div class="id-text">ID ${escHtml(s.idCliente)||'—'}</div>
+      </td>
+      <td><span class="cpf-mono">${fmtCPF(s.cpf)}</span></td>
+      <td>${telHtml}</td>
+      <td><span class="email-text">${escHtml(s.email)||'—'}</span></td>
+      <td style="text-align:center">${diasHtml}</td>
+      <td style="font-size:.78rem">${diagHtml}</td>
+      <td><span class="badge badge-${s.status}">${STATUS_LABEL[s.status]}</span></td>
+      <td class="note-cell">
+        <span class="note-preview ${note?'':'empty'}" onclick="openNote(this,'${s.cpf}')">${note||'+ Anotação'}</span>
+        <textarea class="note-textarea" onblur="saveNote(this,'${s.cpf}')" onkeydown="if(event.key==='Escape')this.blur()">${note}</textarea>
+      </td>
+      <td>
+        <button class="${fireCls}" ${fireDisabled} ${fireClick} title="${fireTitle}">${fireLabel}</button>
+      </td>
+    </tr>`;
+  }).join('');
+}
+
+// CHECKBOX SELECTION
+function toggleAll(cbAll) {
+  document.querySelectorAll('.row-cb').forEach(cb => {
+    cb.checked = cbAll.checked;
+    cb.closest('tr').classList.toggle('row-selected', cbAll.checked);
+  });
+  updateSelBar();
+}
+
+function onRowCheck(cb) {
+  cb.closest('tr').classList.toggle('row-selected', cb.checked);
+  const all  = document.querySelectorAll('.row-cb');
+  const chkd = document.querySelectorAll('.row-cb:checked');
+  const cbAll = document.getElementById('cbAll');
+  if (cbAll) {
+    cbAll.checked       = chkd.length === all.length && all.length > 0;
+    cbAll.indeterminate = chkd.length > 0 && chkd.length < all.length;
+  }
+  updateSelBar();
+}
+
+function getSelectedCPFs() {
+  return Array.from(document.querySelectorAll('.row-cb:checked')).map(cb => cb.dataset.cpf);
+}
+
+function updateSelBar() {
+  const sel     = getSelectedCPFs();
+  const selBar  = document.getElementById('selBar');
+  const btnAll  = document.getElementById('btnDispatchAll');
+  const selCount= document.getElementById('selCount');
+  if (sel.length > 0) {
+    selBar.classList.add('visible');
+    btnAll.style.display = 'none';
+    selCount.textContent = `${sel.length} selecionado${sel.length > 1 ? 's' : ''}`;
+  } else {
+    selBar.classList.remove('visible');
+    btnAll.style.display = '';
+  }
+}
+
+// NOTES
+function openNote(span, cpf) {
+  const ta = span.nextElementSibling;
+  span.style.display = 'none';
+  ta.style.display   = 'block';
+  ta.focus();
+  ta.selectionStart = ta.selectionEnd = ta.value.length;
+}
+
+function saveNote(ta, cpf) {
+  const val  = ta.value.trim();
+  const span = ta.previousElementSibling;
+  if (val) {
+    localStorage.setItem(LS_NOTE_PFX + cpf, val);
+    span.textContent = val;
+    span.classList.remove('empty');
+  } else {
+    localStorage.removeItem(LS_NOTE_PFX + cpf);
+    span.textContent = '+ Anotação';
+    span.classList.add('empty');
+  }
+  ta.style.display   = 'none';
+  span.style.display = 'block';
+}
+
+// WEBHOOK
+function buildPayload(s) {
+  return {
+    cpf:                    s.cpf,
+    nome:                   s.nome,
+    email:                  s.email,
+    telefone:               s.telefone,
+    id_cliente:             s.idCliente,
+    status:                 s.status,
+    dias_desde_diagnostico: s.dias,
+    ultimo_diagnostico:     s.ultimoDiag ? s.ultimoDiag.split('T')[0] : null,
+    marco: s.status==='urgente' ? 'sem_diagnostico'
+         : s.status==='amarelo' ? '30_dias'
+         : s.status==='laranja' ? '45_dias'
+         : s.status==='vermelho'? '60_dias'
+         : 'em_dia'
+  };
+}
+
+async function fireWebhook(s, btn) {
+  const url = getWebhookUrl(s.status);
+  if (!url) { showToast('Configure o webhook para este status primeiro!', 'err'); return; }
+  btn.textContent = '⏳';
+  btn.disabled = true;
+  try {
+    const res = await fetch(url, {
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify(buildPayload(s))
+    });
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    btn.textContent = '✓ Enviado';
+    btn.classList.add('sent');
+    sessionStorage.setItem('sent_' + s.cpf, '1');
+    showToast(`✓ Disparo enviado para ${s.nome.split(' ')[0]}`, 'ok');
+  } catch(e) {
+    btn.textContent = '✗ Erro';
+    btn.classList.add('error');
+    btn.disabled = false;
+    showToast('Erro no disparo: ' + e.message, 'err');
+  }
+}
+
+function openDispatchAll() {
+  const selectedCPFs = getSelectedCPFs();
+  const useSelected  = selectedCPFs.length > 0;
+
+  const q = (document.getElementById('searchBox').value||'').toLowerCase();
+  visibleForDispatch = allStudents.filter(s => {
+    if (useSelected) {
+      if (!selectedCPFs.includes(s.cpf)) return false;
+    } else {
+      if (currentFilter!=='todos' && s.status!==currentFilter) return false;
+      if (q && !s.nome.toLowerCase().includes(q) && !s.cpf.includes(q) && !s.email.toLowerCase().includes(q)) return false;
+    }
+    if (sessionStorage.getItem('sent_'+s.cpf)) return false;
+    if (s.status==='verde') return false;
+    if (!getWebhookUrl(s.status)) return false;
+    return true;
+  });
+
+  if (!visibleForDispatch.length) {
+    showToast('Nenhum aluno disponível para disparo (verifique os webhooks configurados).', 'err');
+    return;
+  }
+  document.getElementById('modalCount').textContent = visibleForDispatch.length;
+  document.getElementById('modalOverlay').classList.add('open');
+}
+
+function closeModal() { document.getElementById('modalOverlay').classList.remove('open'); }
+
+async function dispatchAll() {
+  closeModal();
+  let ok=0, err=0;
+  for (const s of visibleForDispatch) {
+    const url = getWebhookUrl(s.status);
+    if (!url) { err++; continue; }
+    try {
+      const res = await fetch(url, {
+        method:'POST',
+        headers:{'Content-Type':'application/json'},
+        body:JSON.stringify(buildPayload(s))
+      });
+      if (!res.ok) throw new Error();
+      sessionStorage.setItem('sent_'+s.cpf, '1');
+      ok++;
+    } catch { err++; }
+    await new Promise(r => setTimeout(r, 150));
+  }
+  applyFilters();
+  showToast(`✓ ${ok} disparos enviados${err?` — ${err} sem webhook configurado`:''}`, err?'err':'ok');
+}
+
+// HELPERS
+function fmtCPF(c) {
+  if (!c || c.length!==11) return c;
+  return `${c.slice(0,3)}.${c.slice(3,6)}.${c.slice(6,9)}-${c.slice(9)}`;
+}
+function fmtPhone(t) {
+  if (t.length===11) return `(${t.slice(0,2)}) ${t.slice(2,7)}-${t.slice(7)}`;
+  if (t.length===10) return `(${t.slice(0,2)}) ${t.slice(2,6)}-${t.slice(6)}`;
+  return t;
+}
+function fmtDate(iso)     { return new Date(iso).toLocaleDateString('pt-BR'); }
+function fmtDateTime(iso) { return new Date(iso).toLocaleString('pt-BR',{day:'2-digit',month:'2-digit',year:'numeric',hour:'2-digit',minute:'2-digit'}); }
+function escHtml(s)       { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;'); }
+
+let toastTimer;
+function showToast(msg, type='') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show ' + type;
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className='', 3500);
+}
+</script>
+</body>
+</html>
