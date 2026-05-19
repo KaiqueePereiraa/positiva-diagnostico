@@ -87,6 +87,7 @@ input[type=file]{display:none}
 .kpi.k-amarelo{border-left-color:var(--yellow)} .kpi.k-amarelo .val{color:var(--yellow)}
 .kpi.k-laranja{border-left-color:var(--orange)} .kpi.k-laranja .val{color:var(--orange)}
 .kpi.k-vermelho{border-left-color:var(--red)}   .kpi.k-vermelho .val{color:var(--red)}
+.kpi.k-excluidos{border-left-color:var(--gray-m);cursor:default} .kpi.k-excluidos .val{color:var(--gray-l)} .kpi.k-excluidos:hover{transform:none}
 
 /* FILTER BAR */
 .filter-bar{padding:14px 28px 0;display:flex;align-items:center;gap:10px;flex-wrap:wrap}
@@ -267,6 +268,9 @@ input[type=file]{display:none}
   <div class="kpi k-vermelho" onclick="setFilter('vermelho')">
     <div class="lbl">Crítico</div><div class="val" id="cVermelho">0</div><div class="sub">mais de 60 dias</div>
   </div>
+  <div class="kpi k-excluidos">
+    <div class="lbl">Excluídos</div><div class="val" id="cExcluidos">0</div><div class="sub">inativos removidos</div>
+  </div>
 </div>
 
 <!-- FILTER BAR -->
@@ -331,6 +335,7 @@ const LS_WH       = 'positiva_diag_webhooks';
 const LS_NOTE_PFX = 'positiva_diag_note_';
 
 let allStudents = [];
+let totalExcluidos = 0;
 let currentFilter = 'todos';
 let sortField = null;
 let sortAsc = true;
@@ -437,7 +442,9 @@ async function processFiles() {
   btn.disabled = true;
   try {
     const [dc, dd] = await Promise.all([readExcel(rawClientes), readExcel(rawDiag)]);
-    allStudents = buildStudents(dc, dd);
+    const result = buildStudents(dc, dd);
+    allStudents = result.students;
+    totalExcluidos = result.excluidos;
     saveToStorage();
     renderAll(true);
     showToast('✓ Dashboard gerado com sucesso!', 'ok');
@@ -508,7 +515,11 @@ function buildStudents(clientes, diagnosticos) {
 
     students.push({cpf, nome, telefone, email, idCliente, status, dias, ultimoDiag});
   }
-  return students;
+
+  const cpfsAtivos = new Set(clientes.map(r => normCPF(r['CPF (CIN)'] || r['CPF'] || '')).filter(c => c.length >= 9));
+  const excluidos = Object.keys(diagMap).filter(cpf => !cpfsAtivos.has(cpf)).length;
+
+  return { students, excluidos };
 }
 
 // STORAGE
@@ -516,6 +527,7 @@ function saveToStorage() {
   try {
     localStorage.setItem(LS_STUDENTS, JSON.stringify(allStudents));
     localStorage.setItem(LS_LOADED, new Date().toISOString());
+    localStorage.setItem('positiva_diag_excluidos', totalExcluidos);
   } catch(e) {}
 }
 
@@ -525,6 +537,7 @@ function tryLoadFromStorage() {
     const date = localStorage.getItem(LS_LOADED);
     if (!raw) return;
     allStudents = JSON.parse(raw);
+    totalExcluidos = parseInt(localStorage.getItem('positiva_diag_excluidos') || '0', 10);
     if (allStudents.length) renderAll(false, date);
   } catch(e) {}
 }
@@ -562,6 +575,8 @@ function updateCards() {
     const el = document.getElementById('c' + k.charAt(0).toUpperCase() + k.slice(1));
     if (el) el.textContent = c[k];
   });
+  const elExcl = document.getElementById('cExcluidos');
+  if (elExcl) elExcl.textContent = totalExcluidos;
 }
 
 function setFilter(f) {
