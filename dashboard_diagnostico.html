@@ -1012,6 +1012,12 @@ function buildCalculadora(diagnosticos, clientes) {
     const positivo = kgPerdido > 0; // precisa ser estritamente menor que o recorde anterior
     // bônus só conta kg inteiros perdidos além do recorde: 1,5kg = R$50, 0,7kg = R$0
     const bonus = positivo ? Math.floor(kgPerdido) * BONUS_POR_KG : 0;
+    // efeito sanfona = a pessoa JÁ tinha alcançado um recorde melhor antes (o recorde não é
+    // a primeira avaliação, ou seja, houve uma melhora real em algum ponto) e agora está pior
+    // que esse recorde. Quem nunca melhorou nenhuma vez (só foi piorando desde o início) não
+    // conta como sanfona, é só falta de evolução.
+    const houveMelhoraAntes = recorde !== anteriores[0];
+    const sanfona = !positivo && houveMelhoraAntes;
     registros.push({
       cpf,
       nome: info?.nome || '',
@@ -1025,28 +1031,34 @@ function buildCalculadora(diagnosticos, clientes) {
       gorduraKgAntes: recorde.gorduraKg,
       gorduraKgDepois: last.gorduraKg,
       kgPerdido,
+      kgAcimaRecorde: +(-kgPerdido).toFixed(2),
       bonus,
       dataAntes: recorde.date,
       dataDepois: last.date,
       positivo,
+      sanfona,
     });
   }
 
-  const positivos = registros.filter(r => r.positivo);
+  const positivos    = registros.filter(r => r.positivo);
+  const sanfonaCasos = registros.filter(r => r.sanfona);
 
-  // agrupar resultados positivos por mês (da avaliação mais recente)
+  // agrupar resultados positivos e casos de sanfona por mês (da avaliação mais recente)
   const mesesMap = {};
-  for (const r of positivos) {
+  const getMes = (r) => {
     const key = `${r.dataDepois.getFullYear()}-${String(r.dataDepois.getMonth()+1).padStart(2,'0')}`;
     if (!mesesMap[key]) {
-      mesesMap[key] = { key, label: `${MESES_PT[r.dataDepois.getMonth()]} ${r.dataDepois.getFullYear()}`, alunos: [] };
+      mesesMap[key] = { key, label: `${MESES_PT[r.dataDepois.getMonth()]} ${r.dataDepois.getFullYear()}`, alunos: [], sanfonaAlunos: [] };
     }
-    mesesMap[key].alunos.push(r);
-  }
+    return mesesMap[key];
+  };
+  for (const r of positivos)    getMes(r).alunos.push(r);
+  for (const r of sanfonaCasos) getMes(r).sanfonaAlunos.push(r);
 
   const meses = Object.values(mesesMap).sort((a, b) => b.key.localeCompare(a.key));
   meses.forEach(m => {
     m.alunos.sort((a, b) => b.kgPerdido - a.kgPerdido);
+    m.sanfonaAlunos.sort((a, b) => b.kgAcimaRecorde - a.kgAcimaRecorde);
 
     // elegíveis = têm contrato cadastrado no FiltroClientes e geram bônus pro professor.
     // inelegíveis = não constam no FiltroClientes (contrato fora do programa de bônus) —
@@ -1063,11 +1075,23 @@ function buildCalculadora(diagnosticos, clientes) {
       profMap[p].totalBonus += a.bonus;
     }
     m.professores = Object.values(profMap).sort((a, b) => b.totalBonus - a.totalBonus || b.alunos.length - a.alunos.length);
+
+    // mesma separação elegível/inelegível e agrupamento por professor pros casos de sanfona
+    m.sanfonaElegiveis   = m.sanfonaAlunos.filter(a => a.encontrado);
+    m.sanfonaInelegiveis = m.sanfonaAlunos.filter(a => !a.encontrado);
+    const sanfonaProfMap = {};
+    for (const a of m.sanfonaElegiveis) {
+      const p = a.professor || '';
+      if (!sanfonaProfMap[p]) sanfonaProfMap[p] = { nome: p, alunos: [] };
+      sanfonaProfMap[p].alunos.push(a);
+    }
+    m.sanfonaProfessores = Object.values(sanfonaProfMap).sort((a, b) => b.alunos.length - a.alunos.length);
   });
 
   return {
     registros,
     positivos,
+    sanfonaCasos,
     meses,
     totalComparados: registros.length,
     totalPositivos:  positivos.length,
@@ -1098,6 +1122,23 @@ function calcProfCard(p, uid, monthTotalBonus) {
   </div>`;
 }
 
+function calcSanfonaProfCard(p, uid) {
+  const rows = p.alunos.map(a => `
+    <li style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)">
+      <span style="font-size:.72rem;color:var(--gray-l);flex:1">${escHtml(a.nome)}</span>
+      <span style="font-size:.68rem;color:var(--orange);font-weight:700">+${a.kgAcimaRecorde.toFixed(1)}kg</span>
+    </li>`).join('');
+  return `<div class="rel-prof-card" style="border-left-color:var(--orange)">
+    <div class="rel-prof-name">${escHtml(p.nome) || '— SEM PROFESSOR ATRIBUÍDO'}</div>
+    <div class="rel-prof-row">
+      <div class="rel-prof-stat"><b style="color:var(--white)">${p.alunos.length}</b><span> aluno${p.alunos.length!==1?'s':''}</span></div>
+      <div class="rel-prof-stat"><b style="color:var(--orange)">${p.alunos.reduce((s,a)=>s+a.kgAcimaRecorde,0).toFixed(1)}kg</b><span> acima do recorde</span></div>
+    </div>
+    <button class="rel-detail-toggle" onclick="toggleRelDetail('${uid}')">▸ Ver alunos</button>
+    <div class="rel-detail" id="${uid}"><ul class="rel-detail-list" style="list-style:none">${rows}</ul></div>
+  </div>`;
+}
+
 function renderCalculadora() {
   const el = document.getElementById('calcContent');
   const d  = calcData;
@@ -1113,9 +1154,10 @@ function renderCalculadora() {
     <div class="rel-kpi rk-fez"><div class="lbl">Resultado Positivo</div><div class="val">${d.totalPositivos}</div><div class="sub">bateram novo recorde (kg)</div></div>
     <div class="rel-kpi rk-pct"><div class="lbl">Taxa de Sucesso</div><div class="val">${d.pct}%</div><div class="sub">dos comparados</div></div>
     <div class="rel-kpi rk-conv"><div class="lbl">Bônus Total</div><div class="val" style="font-size:1.5rem">${fmtBRL(d.totalBonus)}</div><div class="sub">a pagar aos professores</div></div>
+    <div class="rel-kpi rk-nao"><div class="lbl">Efeito Sanfona</div><div class="val">${d.sanfonaCasos.length}</div><div class="sub">regrediram do recorde</div></div>
   </div>`;
 
-  if (!d.totalPositivos) {
+  if (!d.totalPositivos && !d.sanfonaCasos.length) {
     html += `<div class="rel-section-title" style="margin:0 28px">Nenhum aluno bateu um novo recorde de gordura (kg) na avaliação mais recente.</div>`;
     el.innerHTML = html;
     return;
@@ -1190,6 +1232,73 @@ function renderCalculadora() {
         </table>
       </div>`;
     }
+
+    const totalSanfona = mes.sanfonaElegiveis.length + mes.sanfonaInelegiveis.length;
+    if (totalSanfona) {
+      html += `<div class="rel-section-title" style="margin:20px 28px 10px;border-bottom-color:rgba(255,159,67,.25)">
+        <span style="color:var(--orange)">⚠ Efeito Sanfona — ${totalSanfona} aluno${totalSanfona!==1?'s':''}</span>
+        <span style="font-weight:400;color:var(--gray-m);text-transform:none;font-style:italic"> (já bateram esse recorde antes e regrediram — não geram bônus)</span>
+      </div>`;
+
+      if (mes.sanfonaElegiveis.length) {
+        html += `<div class="rel-prof-grid" style="padding:0 28px;margin-bottom:14px">
+          ${mes.sanfonaProfessores.map((p, pi) => calcSanfonaProfCard(p, `s${mi}p${pi}`)).join('')}
+        </div>`;
+        html += `<div class="table-wrap" style="padding-top:0">
+          <table class="data-table">
+            <thead><tr>
+              <th></th><th>Aluno</th><th>Professor</th>
+              <th>Kg Acima do Recorde</th><th>Data Atual</th><th>Nº Avaliações</th>
+            </tr></thead>
+            <tbody>
+              ${mes.sanfonaElegiveis.map((a, ai) => { const rid = `sanElegDet-${mi}-${ai}`; return `<tr>
+                <td><button class="calc-expand-btn" onclick="toggleCalcDetail('${rid}',this)">▸</button></td>
+                <td>${escHtml(a.nome)}</td>
+                <td>${escHtml(a.professor) || '<span style="color:var(--gray-m)">—</span>'}</td>
+                <td><span style="color:var(--orange);font-weight:900;font-style:italic">+${a.kgAcimaRecorde.toFixed(2)}kg</span></td>
+                <td style="font-size:.78rem">${a.dataDepois.toLocaleDateString('pt-BR')}</td>
+                <td style="text-align:center">${a.totalAvaliacoes}</td>
+              </tr>
+              <tr class="calc-detail-row" id="${rid}" style="display:none"><td colspan="6">
+                <div class="calc-detail-grid">
+                  <div><b>Peso:</b> ${a.pesoAntes.toFixed(1)}kg → ${a.pesoDepois.toFixed(1)}kg</div>
+                  <div><b>% Gordura:</b> ${a.fatAntes.toFixed(1)}% → ${a.fatDepois.toFixed(1)}%</div>
+                  <div><b>Gordura (kg):</b> ${a.gorduraKgAntes.toFixed(2)}kg (recorde) → ${a.gorduraKgDepois.toFixed(2)}kg (atual)</div>
+                  <div><b>Data do recorde anterior:</b> ${a.dataAntes.toLocaleDateString('pt-BR')}</div>
+                </div>
+              </td></tr>`; }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      }
+
+      if (mes.sanfonaInelegiveis.length) {
+        html += `<div class="table-wrap" style="padding-top:0">
+          <table class="data-table">
+            <thead><tr>
+              <th></th><th>CPF</th><th>Kg Acima do Recorde</th><th>Data Atual</th><th>Nº Avaliações</th>
+            </tr></thead>
+            <tbody>
+              ${mes.sanfonaInelegiveis.map((a, ai) => { const rid = `sanInelDet-${mi}-${ai}`; return `<tr>
+                <td><button class="calc-expand-btn" onclick="toggleCalcDetail('${rid}',this)">▸</button></td>
+                <td><span class="cpf-mono">${fmtCPF(a.cpf)}</span></td>
+                <td style="color:var(--gray-l)">+${a.kgAcimaRecorde.toFixed(2)}kg</td>
+                <td style="font-size:.78rem">${a.dataDepois.toLocaleDateString('pt-BR')}</td>
+                <td style="text-align:center">${a.totalAvaliacoes}</td>
+              </tr>
+              <tr class="calc-detail-row" id="${rid}" style="display:none"><td colspan="5">
+                <div class="calc-detail-grid">
+                  <div><b>Peso:</b> ${a.pesoAntes.toFixed(1)}kg → ${a.pesoDepois.toFixed(1)}kg</div>
+                  <div><b>% Gordura:</b> ${a.fatAntes.toFixed(1)}% → ${a.fatDepois.toFixed(1)}%</div>
+                  <div><b>Gordura (kg):</b> ${a.gorduraKgAntes.toFixed(2)}kg (recorde) → ${a.gorduraKgDepois.toFixed(2)}kg (atual)</div>
+                  <div><b>Data do recorde anterior:</b> ${a.dataAntes.toLocaleDateString('pt-BR')}</div>
+                </div>
+              </td></tr>`; }).join('')}
+            </tbody>
+          </table>
+        </div>`;
+      }
+    }
   });
 
   el.innerHTML = html;
@@ -1211,7 +1320,7 @@ function toggleRelDetail(id) {
 
 function exportCalculadora() {
   const d = calcData;
-  if (!d || !d.totalPositivos) return;
+  if (!d || (!d.totalPositivos && !d.sanfonaCasos.length)) return;
   const wb = XLSX.utils.book_new();
 
   // Detalhado — todos os alunos com resultado positivo (elegíveis e não elegíveis)
@@ -1248,6 +1357,30 @@ function exportCalculadora() {
     }
   }
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(profRows), 'Bônus por Professor');
+
+  // Efeito sanfona — quem já bateu esse recorde antes e regrediu (não gera bônus)
+  const sanfonaRows = [['Mês','Aluno','CPF','Professor','Peso Recorde Ant. (kg)','Peso Atual (kg)','% Gordura Recorde Ant.','% Gordura Atual','Recorde Anterior (kg gordura)','Atual (kg gordura)','Kg Acima do Recorde','Data Recorde Ant.','Data Atual','Nº Avaliações']];
+  for (const mes of d.meses) {
+    for (const a of [...mes.sanfonaElegiveis, ...mes.sanfonaInelegiveis]) {
+      sanfonaRows.push([
+        mes.label,
+        a.encontrado ? a.nome : '',
+        fmtCPF(a.cpf),
+        a.professor,
+        a.pesoAntes,
+        a.pesoDepois,
+        a.fatAntes,
+        a.fatDepois,
+        a.gorduraKgAntes,
+        a.gorduraKgDepois,
+        a.kgAcimaRecorde,
+        a.dataAntes.toLocaleDateString('pt-BR'),
+        a.dataDepois.toLocaleDateString('pt-BR'),
+        a.totalAvaliacoes,
+      ]);
+    }
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sanfonaRows), 'Efeito Sanfona');
 
   XLSX.writeFile(wb, 'calculadora_resultado.xlsx');
 }
