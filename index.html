@@ -201,29 +201,15 @@ input[type=file]{display:none}
 .rel-page-sub{font-size:.72rem;color:var(--gray-m);margin-top:4px;font-style:italic}
 .btn-export{background:rgba(190,245,117,.1);border:1.5px solid var(--green);color:var(--green);border-radius:7px;padding:8px 16px;font-family:inherit;font-size:.78rem;font-weight:700;font-style:italic;cursor:pointer;transition:background .2s}
 .btn-export:hover{background:rgba(190,245,117,.2)}
-.rel-btn-add-mes{background:rgba(167,139,250,.1);border:1.5px solid rgba(167,139,250,.4);color:#A78BFA;border-radius:7px;padding:8px 16px;font-family:inherit;font-size:.78rem;font-weight:700;font-style:italic;cursor:pointer;transition:all .2s}
-.rel-btn-add-mes:hover{background:rgba(167,139,250,.2)}
 .rel-months-grid{display:grid;grid-template-columns:1fr;gap:16px;padding:0 28px 20px}
-.rel-months-grid.two-months{grid-template-columns:1fr 1fr}
 .rel-month-panel{background:var(--card);border:1.5px solid rgba(255,255,255,.08);border-radius:12px;padding:18px 20px}
 .rel-month-header{display:flex;align-items:center;gap:10px;margin-bottom:14px;flex-wrap:wrap}
 .rel-month-badge{font-size:.62rem;font-weight:900;font-style:italic;text-transform:uppercase;letter-spacing:1px;padding:3px 10px;border-radius:20px;background:rgba(190,245,117,.12);color:var(--green);border:1px solid rgba(190,245,117,.3);flex-shrink:0}
-.rel-month-name{background:var(--dark);border:1px solid rgba(255,255,255,.12);color:var(--white);padding:5px 10px;border-radius:6px;font-family:inherit;font-size:.8rem;outline:none;flex:1;min-width:120px;transition:border-color .2s}
-.rel-month-name:focus{border-color:var(--green)}
-.rel-month-name::placeholder{color:var(--gray-m)}
-.rel-month-status{font-size:.7rem;font-style:italic;color:var(--green);flex-shrink:0}
 .rel-month-files{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
 .rel-gen-btn{width:100%;margin-top:0}
-.rel-compare-bar{background:var(--card);border:1px solid rgba(190,245,117,.2);border-radius:12px;padding:18px 20px;margin:0 28px 20px}
-.rel-compare-title{font-size:.72rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray-m);font-style:italic;margin-bottom:12px}
-.rel-compare-title em{color:var(--gray-l);font-style:normal;font-weight:700}
-.rel-compare-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(160px,1fr));gap:10px}
-.rel-cmp-item{background:var(--dark);border-radius:8px;padding:10px 12px}
-.rel-cmp-item .lbl{font-size:.58rem;text-transform:uppercase;letter-spacing:1px;color:var(--gray-m);font-style:italic;margin-bottom:4px}
-.rel-cmp-item>div:last-child{font-size:.82rem;color:var(--gray-l);display:flex;align-items:center;gap:6px;font-weight:700;flex-wrap:wrap}
-.rel-mes-header{display:flex;align-items:center;gap:10px;padding:4px 28px 10px}
+.rel-mes-header{display:flex;align-items:center;gap:10px;padding:4px 28px 10px;flex-wrap:wrap}
 .rel-mes-nome{font-size:.9rem;font-weight:900;font-style:italic;color:var(--white)}
-@media(max-width:860px){.rel-months-grid.two-months{grid-template-columns:1fr}}
+.rel-bonus-pill{font-size:.68rem;font-weight:900;font-style:italic;background:rgba(190,245,117,.12);color:var(--green);border:1px solid rgba(190,245,117,.3);border-radius:20px;padding:3px 10px;margin-left:auto}
 @media(max-width:640px){.rel-month-files{grid-template-columns:1fr}.rel-months-grid{padding:0 14px 20px}.rel-compare-bar,.rel-mes-header{margin-left:14px;margin-right:14px}}
 .prof-card{background:var(--card);border-radius:10px;padding:16px;border-left:4px solid var(--blue);cursor:pointer;transition:transform .15s,background .2s}
 .prof-card:hover{transform:translateY(-2px);background:rgba(255,255,255,.04)}
@@ -462,109 +448,49 @@ input[type=file]{display:none}
   Os dados ficam salvos no navegador até você trocar os arquivos.</p>
 </div>
 
-<!-- RELATÓRIO ENTRADA DO MÊS — seção independente, sempre visível -->
+<!-- CALCULADORA DE RESULTADO — seção independente, sempre visível -->
 <div class="rel-page-section">
   <div class="rel-page-header">
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
       <div>
-        <div class="rel-page-title">Relatório Entrada do Mês</div>
-        <div class="rel-page-sub">Cruzamento de convertidos e rematriculados com os diagnósticos realizados</div>
+        <div class="rel-page-title">Calculadora de Resultado</div>
+        <div class="rel-page-sub">Compara as duas avaliações mais recentes de cada aluno, mostra quem reduziu o % de gordura corporal e calcula o bônus do professor (R$ 50 por kg perdido)</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
-        <button class="btn-export" id="relBtnExport" onclick="exportRelatorio()" style="display:none">⬇ Exportar Excel</button>
-        <button class="btn-trocar" id="relBtnReset" onclick="resetRelatorio()" style="display:none">↺ Novo relatório</button>
-        <button class="rel-btn-add-mes" id="relBtnAddMes" onclick="toggleMes2()" style="display:none">+ Comparar com outro mês</button>
+        <button class="btn-export" id="calcBtnExport" onclick="exportCalculadora()" style="display:none">⬇ Exportar Excel</button>
+        <button class="btn-trocar" id="calcBtnReset" onclick="resetCalculadora()" style="display:none">↺ Novo cálculo</button>
       </div>
     </div>
   </div>
 
-  <!-- Painéis de upload lado a lado -->
-  <div class="rel-months-grid" id="relMonthsGrid">
-
-    <!-- MÊS 1 -->
-    <div class="rel-month-panel" id="relPanel1">
+  <!-- Painel de upload -->
+  <div class="rel-months-grid" id="calcUploadGrid">
+    <div class="rel-month-panel" id="calcPanel">
       <div class="rel-month-header">
-        <span class="rel-month-badge">Mês 1</span>
-        <input class="rel-month-name" id="relName1" type="text" placeholder="Ex: Maio 2026" value="">
-        <span class="rel-month-status" id="relStatus1"></span>
+        <span class="rel-month-badge">Arquivos</span>
       </div>
-      <div class="rel-month-files" id="relFiles1">
-        <div class="upload-box">
-          <label>Alunos ativos</label>
-          <div class="file-btn" id="relBtnClientes" onclick="document.getElementById('relFileClientes').click()">
-            <span id="relIconClientes">📋</span><span id="relLabelClientes">FiltroClientes.xlsx</span>
-          </div>
-          <input type="file" id="relFileClientes" accept=".xlsx,.xls,.csv">
-        </div>
+      <div class="rel-month-files" id="calcFiles">
         <div class="upload-box">
           <label>Diagnósticos realizados</label>
-          <div class="file-btn" id="relBtnDiag" onclick="document.getElementById('relFileDiag').click()">
-            <span id="relIconDiag">📊</span><span id="relLabelDiag">Data export.xls</span>
+          <div class="file-btn" id="calcBtnDiag" onclick="document.getElementById('calcFileDiag').click()">
+            <span id="calcIconDiag">📊</span><span id="calcLabelDiag">Data export.xls</span>
           </div>
-          <input type="file" id="relFileDiag" accept=".xlsx,.xls,.csv">
+          <input type="file" id="calcFileDiag" accept=".xlsx,.xls,.csv">
         </div>
         <div class="upload-box">
-          <label>Convertidos</label>
-          <div class="file-btn" id="relBtnConv" onclick="document.getElementById('relFileConv').click()">
-            <span id="relIconConv">🆕</span><span id="relLabelConv">Convertidos.xlsx</span>
+          <label>Alunos ativos (nome e professor)</label>
+          <div class="file-btn" id="calcBtnClientes" onclick="document.getElementById('calcFileClientes').click()">
+            <span id="calcIconClientes">📋</span><span id="calcLabelClientes">FiltroClientes.xlsx</span>
           </div>
-          <input type="file" id="relFileConv" accept=".xlsx,.xls,.csv">
-        </div>
-        <div class="upload-box">
-          <label>Rematrículas</label>
-          <div class="file-btn" id="relBtnRemat" onclick="document.getElementById('relFileRemat').click()">
-            <span id="relIconRemat">🔄</span><span id="relLabelRemat">Rematrícula.xlsx</span>
-          </div>
-          <input type="file" id="relFileRemat" accept=".xlsx,.xls,.csv">
+          <input type="file" id="calcFileClientes" accept=".xlsx,.xls,.csv">
         </div>
       </div>
-      <button class="btn-process rel-gen-btn" id="relBtnProcess" onclick="processRelatorio(1)" disabled>▶ Gerar Mês 1</button>
+      <button class="btn-process rel-gen-btn" id="calcBtnProcess" onclick="processCalculadora()" disabled>▶ Calcular Resultados</button>
     </div>
-
-    <!-- MÊS 2 (oculto inicialmente) -->
-    <div class="rel-month-panel rel-month-panel2" id="relPanel2" style="display:none">
-      <div class="rel-month-header">
-        <span class="rel-month-badge" style="background:rgba(167,139,250,.15);color:#A78BFA;border-color:rgba(167,139,250,.3)">Mês 2</span>
-        <input class="rel-month-name" id="relName2" type="text" placeholder="Ex: Junho 2026" value="">
-        <span class="rel-month-status" id="relStatus2"></span>
-      </div>
-      <div class="rel-month-files" id="relFiles2">
-        <div class="upload-box">
-          <label>Alunos ativos</label>
-          <div class="file-btn" id="relBtnClientes2" onclick="document.getElementById('relFileClientes2').click()">
-            <span id="relIconClientes2">📋</span><span id="relLabelClientes2">FiltroClientes.xlsx</span>
-          </div>
-          <input type="file" id="relFileClientes2" accept=".xlsx,.xls,.csv">
-        </div>
-        <div class="upload-box">
-          <label>Diagnósticos realizados</label>
-          <div class="file-btn" id="relBtnDiag2" onclick="document.getElementById('relFileDiag2').click()">
-            <span id="relIconDiag2">📊</span><span id="relLabelDiag2">Data export.xls</span>
-          </div>
-          <input type="file" id="relFileDiag2" accept=".xlsx,.xls,.csv">
-        </div>
-        <div class="upload-box">
-          <label>Convertidos</label>
-          <div class="file-btn" id="relBtnConv2" onclick="document.getElementById('relFileConv2').click()">
-            <span id="relIconConv2">🆕</span><span id="relLabelConv2">Convertidos.xlsx</span>
-          </div>
-          <input type="file" id="relFileConv2" accept=".xlsx,.xls,.csv">
-        </div>
-        <div class="upload-box">
-          <label>Rematrículas</label>
-          <div class="file-btn" id="relBtnRemat2" onclick="document.getElementById('relFileRemat2').click()">
-            <span id="relIconRemat2">🔄</span><span id="relLabelRemat2">Rematrícula.xlsx</span>
-          </div>
-          <input type="file" id="relFileRemat2" accept=".xlsx,.xls,.csv">
-        </div>
-      </div>
-      <button class="btn-process rel-gen-btn" id="relBtnProcess2" onclick="processRelatorio(2)" disabled>▶ Gerar Mês 2</button>
-    </div>
-
   </div><!-- /rel-months-grid -->
 
   <!-- Resultados -->
-  <div id="relContent" style="padding:0 0 32px"></div>
+  <div id="calcContent" style="padding:0 0 32px"></div>
 </div>
 
 <div id="toast"></div>
@@ -641,13 +567,9 @@ let rawClientes    = null;
 let rawDiag        = null;
 let visibleForDispatch = [];
 
-// Relatório de Entradas — variáveis independentes (suporte a 2 meses)
-let relData = [null, null];  // relData[0] = mês 1, relData[1] = mês 2
-let relRaw  = [
-  { clientes: null, diag: null, conv: null, remat: null },
-  { clientes: null, diag: null, conv: null, remat: null },
-];
-let relMes2Visible = false;
+// Calculadora de Resultado — variáveis independentes
+let calcRaw  = { diag: null, clientes: null };
+let calcData = null;
 
 const STATUS_LABEL = {
   urgente:'SEM DIAGNÓSTICO', verde:'EM DIA',
@@ -672,27 +594,17 @@ tryLoadFromStorage();
   });
 });
 
-// Listeners do Relatório de Entradas — mês 1 e mês 2
-[1, 2].forEach(m => {
-  const sfx   = m === 1 ? '' : '2';
-  const keys  = ['Clientes','Diag','Conv','Remat'];
-  const props = ['clientes','diag','conv','remat'];
-  keys.forEach((k, i) => {
-    const fileId = `relFile${k}${sfx}`;
-    const btnId  = `relBtn${k}${sfx}`;
-    const iconId = `relIcon${k}${sfx}`;
-    const lblId  = `relLabel${k}${sfx}`;
-    const el = document.getElementById(fileId);
-    if (!el) return;
-    el.addEventListener('change', e => {
-      const f = e.target.files[0]; if (!f) return;
-      relRaw[m-1][props[i]] = f;
-      document.getElementById(btnId).classList.add('ok');
-      document.getElementById(iconId).textContent = '✓';
-      document.getElementById(lblId).textContent  = f.name;
-      const r = relRaw[m-1];
-      document.getElementById(`relBtnProcess${sfx}`).disabled = !(r.clientes && r.diag && r.conv && r.remat);
-    });
+// Listeners da Calculadora de Resultado
+['Diag','Clientes'].forEach(k => {
+  const prop = k === 'Diag' ? 'diag' : 'clientes';
+  const el = document.getElementById(`calcFile${k}`);
+  el.addEventListener('change', e => {
+    const f = e.target.files[0]; if (!f) return;
+    calcRaw[prop] = f;
+    document.getElementById(`calcBtn${k}`).classList.add('ok');
+    document.getElementById(`calcIcon${k}`).textContent = '✓';
+    document.getElementById(`calcLabel${k}`).textContent = f.name;
+    document.getElementById('calcBtnProcess').disabled = !(calcRaw.diag && calcRaw.clientes);
   });
 });
 
@@ -854,80 +766,46 @@ async function processFiles() {
   }
 }
 
-// PROCESS — relatório de entradas (por mês)
-async function processRelatorio(m) {
-  const sfx = m === 1 ? '' : '2';
-  const btn = document.getElementById(`relBtnProcess${sfx}`);
-  const r   = relRaw[m-1];
+// PROCESS — calculadora de resultado
+async function processCalculadora() {
+  const btn = document.getElementById('calcBtnProcess');
   btn.textContent = '⏳ Processando…';
   btn.disabled = true;
   try {
-    const [dc, dd, conv, remat] = await Promise.all([
-      readExcel(r.clientes), readExcel(r.diag),
-      readExcel(r.conv),     readExcel(r.remat),
-    ]);
-    const nome = document.getElementById(`relName${m}`).value.trim() || `Mês ${m}`;
-    relData[m-1] = { ...buildRelatorio(dc, dd, conv, remat), nome };
-    document.getElementById(`relStatus${m}`).textContent = '✓ Gerado';
-    document.getElementById(`relFiles${m}`).style.display = 'none';
-    btn.textContent = `✓ ${nome} gerado`;
-    // mostrar botões globais após pelo menos 1 mês processado
-    document.getElementById('relBtnExport').style.display = '';
-    document.getElementById('relBtnReset').style.display  = '';
-    document.getElementById('relBtnAddMes').style.display = relMes2Visible ? 'none' : '';
-    renderRelatorio();
-    showToast(`✓ ${nome} gerado com sucesso!`, 'ok');
+    const [diag, clientes] = await Promise.all([readExcel(calcRaw.diag), readExcel(calcRaw.clientes)]);
+    calcData = buildCalculadora(diag, clientes);
+    document.getElementById('calcFiles').style.display = 'none';
+    btn.textContent = '✓ Calculado';
+    document.getElementById('calcBtnExport').style.display = '';
+    document.getElementById('calcBtnReset').style.display  = '';
+    renderCalculadora();
+    showToast('✓ Calculadora gerada com sucesso!', 'ok');
   } catch(e) {
     showToast('Erro ao processar: ' + e.message, 'err');
-    btn.textContent = `▶ Gerar Mês ${m}`;
+    btn.textContent = '▶ Calcular Resultados';
     btn.disabled = false;
   }
 }
 
-function toggleMes2() {
-  relMes2Visible = true;
-  document.getElementById('relPanel2').style.display = '';
-  document.getElementById('relMonthsGrid').classList.add('two-months');
-  document.getElementById('relBtnAddMes').style.display = 'none';
-}
-
-function resetRelatorio() {
-  relData = [null, null];
-  relRaw  = [
-    { clientes: null, diag: null, conv: null, remat: null },
-    { clientes: null, diag: null, conv: null, remat: null },
-  ];
-  relMes2Visible = false;
-  [1, 2].forEach(m => {
-    const sfx  = m === 1 ? '' : '2';
-    const keys = ['Clientes','Diag','Conv','Remat'];
-    const icons= ['📋','📊','🆕','🔄'];
-    const lbls = ['FiltroClientes.xlsx','Data export.xls','Convertidos.xlsx','Rematrícula.xlsx'];
-    keys.forEach((k, i) => {
-      const btnEl  = document.getElementById(`relBtn${k}${sfx}`);
-      const fileEl = document.getElementById(`relFile${k}${sfx}`);
-      if (btnEl)  btnEl.classList.remove('ok');
-      if (fileEl) fileEl.value = '';
-      const iconEl = document.getElementById(`relIcon${k}${sfx}`);
-      const lblEl  = document.getElementById(`relLabel${k}${sfx}`);
-      if (iconEl) iconEl.textContent = icons[i];
-      if (lblEl)  lblEl.textContent  = lbls[i];
-    });
-    const btnP = document.getElementById(`relBtnProcess${sfx}`);
-    if (btnP) { btnP.disabled = true; btnP.textContent = `▶ Gerar Mês ${m}`; btnP.style.display = ''; }
-    const filesEl  = document.getElementById(`relFiles${m}`);
-    const statusEl = document.getElementById(`relStatus${m}`);
-    if (filesEl)  filesEl.style.display  = '';
-    if (statusEl) statusEl.textContent   = '';
-    const nameEl = document.getElementById(`relName${m}`);
-    if (nameEl) nameEl.value = '';
+function resetCalculadora() {
+  calcData = null;
+  calcRaw  = { diag: null, clientes: null };
+  ['Diag','Clientes'].forEach(k => {
+    const btnEl  = document.getElementById(`calcBtn${k}`);
+    const fileEl = document.getElementById(`calcFile${k}`);
+    if (btnEl)  btnEl.classList.remove('ok');
+    if (fileEl) fileEl.value = '';
   });
-  document.getElementById('relPanel2').style.display = 'none';
-  document.getElementById('relMonthsGrid').classList.remove('two-months');
-  document.getElementById('relBtnExport').style.display = 'none';
-  document.getElementById('relBtnReset').style.display  = 'none';
-  document.getElementById('relBtnAddMes').style.display = 'none';
-  document.getElementById('relContent').innerHTML = '';
+  document.getElementById('calcIconDiag').textContent = '📊';
+  document.getElementById('calcLabelDiag').textContent = 'Data export.xls';
+  document.getElementById('calcIconClientes').textContent = '📋';
+  document.getElementById('calcLabelClientes').textContent = 'FiltroClientes.xlsx';
+  const btnP = document.getElementById('calcBtnProcess');
+  btnP.disabled = true; btnP.textContent = '▶ Calcular Resultados';
+  document.getElementById('calcFiles').style.display = '';
+  document.getElementById('calcBtnExport').style.display = 'none';
+  document.getElementById('calcBtnReset').style.display  = 'none';
+  document.getElementById('calcContent').innerHTML = '';
 }
 
 // STORAGE
@@ -1047,163 +925,204 @@ function renderProfessorView() {
 }
 
 // RELATÓRIO DE ENTRADAS
-function buildRelatorio(clientes, diagnosticos, convertidos, rematriculas) {
-  const diagSet = new Set();
+// CALCULADORA DE RESULTADO
+const MESES_PT   = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
+const BONUS_POR_KG = 50; // R$ por ponto percentual inteiro de gordura reduzido
+
+// O Data export usa parênteses full-width (｛%｝) em vários headers — casamos por
+// prefixo "fat" + "%" pra funcionar independente da variante de parêntese usada.
+function getFatPercent(row) {
+  for (const k of Object.keys(row)) {
+    const kl = k.toLowerCase();
+    if (kl.startsWith('fat') && kl.includes('%')) {
+      const v = parseFloat(row[k]);
+      return isNaN(v) ? null : v;
+    }
+  }
+  return null;
+}
+
+function parseDiagDate(row) {
+  let dt = row['gmtCreate'];
+  if (dt instanceof Date) return isNaN(dt) ? null : dt;
+  if (typeof dt === 'string' && dt.trim()) {
+    let d = new Date(dt.replace(' ', 'T'));
+    if (isNaN(d)) d = new Date(dt);
+    return isNaN(d) ? null : d;
+  }
+  return null;
+}
+
+function fmtBRL(v) {
+  return (v || 0).toLocaleString('pt-BR', { style:'currency', currency:'BRL', minimumFractionDigits:0 });
+}
+
+function buildCalculadora(diagnosticos, clientes) {
+  // mapa cpf -> {nome, professor}, a partir do FiltroClientes (mesmo campo 'name'
+  // do Data export já é tratado como CPF em todo o app, via normCPF)
+  const infoMap = {};
+  for (const row of clientes) {
+    const cpf = normCPF(row['CPF (CIN)'] ?? row['CPF'] ?? '');
+    if (!cpf || cpf.length < 9) continue;
+    const nome      = ((row['Nome'] ?? '') + ' ' + (row['Sobrenome'] ?? '')).trim();
+    const professor = String(row['Professor'] ?? row['Instrutor'] ?? row['Personal'] ?? '').trim();
+    infoMap[cpf] = { nome, professor };
+  }
+
+  // agrupar diagnósticos por username (repetido = fez mais de uma avaliação)
+  const groups = {};
   for (const row of diagnosticos) {
     const cpf = normCPF(row['name']);
-    if (cpf && cpf.length >= 9) diagSet.add(cpf);
+    if (!cpf || cpf.length < 9) continue;
+    const fat  = getFatPercent(row);
+    const date = parseDiagDate(row);
+    if (fat === null || !date) continue;
+    (groups[cpf] ||= []).push({ fat, date });
   }
 
-  const convIds  = new Set(convertidos.map(r  => String(r['Id'] ?? '').trim()).filter(Boolean));
-  const rematIds = new Set(rematriculas.map(r => String(r['Matrícula'] ?? '').trim()).filter(Boolean));
-
-  const entradas = [];
-  for (const row of clientes) {
-    const id  = String(row['ID do cliente'] ?? '').trim();
-    const cpf = normCPF(row['CPF (CIN)'] ?? row['CPF'] ?? '');
-    const nome = ((row['Nome'] ?? '') + ' ' + (row['Sobrenome'] ?? '')).trim();
-    const prof = String(row['Professor'] ?? '').trim();
-    const tel  = String(row['Nº do celular'] ?? row['Telefone'] ?? '').replace(/\D/g,'');
-    if (!id || !cpf) continue;
-    const isConv  = convIds.has(id);
-    const isRemat = rematIds.has(id);
-    if (!isConv && !isRemat) continue;
-    const fezDiag = diagSet.has(cpf);
-    entradas.push({ id, cpf, nome, professor: prof, tel, isConv, isRemat, fezDiag });
+  // para quem tem 2+ diagnósticos, compara as duas avaliações mais recentes
+  const registros = [];
+  for (const [cpf, arr] of Object.entries(groups)) {
+    if (arr.length < 2) continue;
+    arr.sort((a, b) => a.date - b.date);
+    const prev  = arr[arr.length - 2];
+    const last  = arr[arr.length - 1];
+    const delta = +(last.fat - prev.fat).toFixed(1);
+    const info  = infoMap[cpf] || null;
+    const positivo = delta < 0;
+    // bônus só conta pontos inteiros perdidos: 1,5 = R$50, 0,7 = R$0
+    const bonus = positivo ? Math.floor(Math.abs(delta)) * BONUS_POR_KG : 0;
+    registros.push({
+      cpf,
+      nome: info?.nome || '',
+      professor: info?.professor || '',
+      encontrado: !!info,
+      totalAvaliacoes: arr.length,
+      fatAntes: prev.fat,
+      fatDepois: last.fat,
+      delta,
+      bonus,
+      dataAntes: prev.date,
+      dataDepois: last.date,
+      positivo,
+    });
   }
 
-  const profMap = {};
-  for (const e of entradas) {
-    const p = e.professor || '';
-    if (!profMap[p]) profMap[p] = { nome: p, total: 0, fez: 0, nao: 0, alunos: [] };
-    profMap[p].total++;
-    if (e.fezDiag) profMap[p].fez++; else profMap[p].nao++;
-    profMap[p].alunos.push(e);
+  const positivos = registros.filter(r => r.positivo);
+
+  // agrupar resultados positivos por mês (da avaliação mais recente) e por professor
+  const mesesMap = {};
+  for (const r of positivos) {
+    const key = `${r.dataDepois.getFullYear()}-${String(r.dataDepois.getMonth()+1).padStart(2,'0')}`;
+    if (!mesesMap[key]) {
+      mesesMap[key] = { key, label: `${MESES_PT[r.dataDepois.getMonth()]} ${r.dataDepois.getFullYear()}`, alunos: [] };
+    }
+    mesesMap[key].alunos.push(r);
   }
 
-  const totalConv  = entradas.filter(e => e.isConv).length;
-  const totalRemat = entradas.filter(e => e.isRemat).length;
-  const totalFez   = entradas.filter(e => e.fezDiag).length;
+  const meses = Object.values(mesesMap).sort((a, b) => b.key.localeCompare(a.key));
+  meses.forEach(m => {
+    m.alunos.sort((a, b) => a.delta - b.delta);
+    m.totalBonus = m.alunos.reduce((s, a) => s + a.bonus, 0);
+
+    const profMap = {};
+    for (const a of m.alunos) {
+      const p = a.professor || '';
+      if (!profMap[p]) profMap[p] = { nome: p, alunos: [], totalBonus: 0 };
+      profMap[p].alunos.push(a);
+      profMap[p].totalBonus += a.bonus;
+    }
+    m.professores = Object.values(profMap).sort((a, b) => b.totalBonus - a.totalBonus || b.alunos.length - a.alunos.length);
+  });
 
   return {
-    entradas,
-    total: entradas.length,
-    totalConv,
-    totalRemat,
-    totalFez,
-    totalNao: entradas.length - totalFez,
-    pct: entradas.length ? Math.round((totalFez / entradas.length) * 100) : 0,
-    profs: Object.values(profMap).sort((a, b) => b.total - a.total),
+    registros,
+    positivos,
+    meses,
+    totalComparados: registros.length,
+    totalPositivos:  positivos.length,
+    pct: registros.length ? Math.round((positivos.length / registros.length) * 100) : 0,
+    reducaoMedia: positivos.length ? +(positivos.reduce((s,r)=>s+r.delta,0) / positivos.length).toFixed(1) : 0,
+    totalBonus: positivos.reduce((s, r) => s + r.bonus, 0),
   };
 }
 
-function waBtn(tel, nome) {
-  const num = tel ? '55' + tel.replace(/^55/,'') : '';
-  if (!num || num.length < 12) return '';
-  const msg = encodeURIComponent(`Olá ${nome.split(' ')[0]}! Você entrou na academia recentemente e ainda não realizou seu diagnóstico corporal. Que tal agendar agora?`);
-  return `<a class="btn-whatsapp" href="https://wa.me/${num}?text=${msg}" target="_blank" style="margin-left:auto;flex-shrink:0">
-    <svg width="12" height="12" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347z"/><path d="M12 0C5.373 0 0 5.373 0 12c0 2.123.554 4.118 1.522 5.849L0 24l6.335-1.508A11.945 11.945 0 0012 24c6.627 0 12-5.373 12-12S18.627 0 12 0zm0 21.818a9.818 9.818 0 01-5.007-1.371l-.36-.213-3.724.886.918-3.618-.234-.373A9.818 9.818 0 1112 21.818z"/></svg>
-    WhatsApp</a>`;
-}
-
-function relProfCard(p, uid, color) {
-  const pct = p.total ? Math.round((p.fez / p.total) * 100) : 0;
-  const cls = pct >= 70 ? 'alta' : pct >= 40 ? 'media' : 'baixa';
+function calcProfCard(p, uid, monthTotalBonus) {
+  const pct = monthTotalBonus ? Math.round((p.totalBonus / monthTotalBonus) * 100) : 0;
   const rows = p.alunos.map(a => `
     <li style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)">
-      <span class="${a.fezDiag ? 'tag-sim' : 'tag-nao'}">${a.fezDiag ? 'FEZ' : 'NÃO'}</span>
-      <span style="font-size:.72rem;color:var(--gray-l);flex:1">${escHtml(a.nome)}</span>
-      <span style="font-size:.62rem;color:var(--gray-m)">${a.isConv && a.isRemat ? 'conv+remat' : a.isConv ? 'convertido' : 'rematrícula'}</span>
-      ${!a.fezDiag ? waBtn(a.tel, a.nome) : ''}
+      <span style="font-size:.72rem;color:var(--gray-l);flex:1">${a.encontrado ? escHtml(a.nome) : fmtCPF(a.cpf) + ' (não cadastrado)'}</span>
+      <span style="font-size:.68rem;color:var(--green);font-weight:700">${a.delta}%</span>
+      <span style="font-size:.68rem;color:var(--gray-m);min-width:52px;text-align:right">${a.bonus ? fmtBRL(a.bonus) : '—'}</span>
     </li>`).join('');
-  return `<div class="rel-prof-card" style="border-left-color:${color}">
-    <div class="rel-prof-name">${escHtml(p.nome) || '— SEM PROFESSOR'}</div>
+  return `<div class="rel-prof-card">
+    <div class="rel-prof-name">${escHtml(p.nome) || '— SEM PROFESSOR ATRIBUÍDO'}</div>
     <div class="rel-prof-row">
-      <div class="rel-prof-stat"><b style="color:var(--white)">${p.total}</b><span> entradas</span></div>
-      <div class="rel-prof-stat"><b style="color:var(--green)">${p.fez}</b><span> fizeram</span></div>
-      <div class="rel-prof-stat"><b style="color:var(--urgent)">${p.nao}</b><span> não fizeram</span></div>
+      <div class="rel-prof-stat"><b style="color:var(--white)">${p.alunos.length}</b><span> aluno${p.alunos.length!==1?'s':''}</span></div>
+      <div class="rel-prof-stat"><b style="color:var(--green)">${fmtBRL(p.totalBonus)}</b><span> de bônus</span></div>
     </div>
-    <div class="rel-bar"><div class="rel-bar-fill" style="width:${pct}%;background:${color}"></div></div>
-    <div class="rel-bar-label"><b class="${cls}">${pct}%</b> de cobertura de diagnóstico</div>
-    <button class="rel-detail-toggle" onclick="toggleRelDetail('${uid}')">▸ Ver lista de alunos</button>
+    <div class="rel-bar"><div class="rel-bar-fill" style="width:${pct}%;background:var(--green)"></div></div>
+    <div class="rel-bar-label"><b class="alta">${pct}%</b> do bônus do mês</div>
+    <button class="rel-detail-toggle" onclick="toggleRelDetail('${uid}')">▸ Ver alunos</button>
     <div class="rel-detail" id="${uid}"><ul class="rel-detail-list" style="list-style:none">${rows}</ul></div>
   </div>`;
 }
 
-function relKpiBlock(rel, prefix) {
-  return `<div class="rel-kpis">
-    <div class="rel-kpi rk-total"><div class="lbl">Total Entradas</div><div class="val">${rel.total}</div><div class="sub">alunos no período</div></div>
-    <div class="rel-kpi rk-conv"><div class="lbl">Convertidos</div><div class="val">${rel.totalConv}</div><div class="sub">novos alunos</div></div>
-    <div class="rel-kpi rk-remat"><div class="lbl">Rematrículas</div><div class="val">${rel.totalRemat}</div><div class="sub">renovações</div></div>
-    <div class="rel-kpi rk-fez"><div class="lbl">Fez Diagnóstico</div><div class="val">${rel.totalFez}</div><div class="sub">avaliados</div></div>
-    <div class="rel-kpi rk-nao"><div class="lbl">Sem Diagnóstico</div><div class="val">${rel.totalNao}</div><div class="sub">não avaliados</div></div>
-    <div class="rel-kpi rk-pct"><div class="lbl">Cobertura</div><div class="val">${rel.pct}%</div><div class="sub">dos que entraram</div></div>
+function renderCalculadora() {
+  const el = document.getElementById('calcContent');
+  const d  = calcData;
+  if (!d) { el.innerHTML = ''; return; }
+
+  if (!d.totalComparados) {
+    el.innerHTML = `<div class="rel-section-title" style="margin:20px 28px 0">Nenhum aluno com duas avaliações foi encontrado nesse arquivo.</div>`;
+    return;
+  }
+
+  let html = `<div class="rel-kpis" style="padding:0 28px;margin-bottom:24px">
+    <div class="rel-kpi rk-total"><div class="lbl">Comparados</div><div class="val">${d.totalComparados}</div><div class="sub">alunos com 2+ avaliações</div></div>
+    <div class="rel-kpi rk-fez"><div class="lbl">Resultado Positivo</div><div class="val">${d.totalPositivos}</div><div class="sub">reduziram % de gordura</div></div>
+    <div class="rel-kpi rk-pct"><div class="lbl">Taxa de Sucesso</div><div class="val">${d.pct}%</div><div class="sub">dos comparados</div></div>
+    <div class="rel-kpi rk-conv"><div class="lbl">Bônus Total</div><div class="val" style="font-size:1.5rem">${fmtBRL(d.totalBonus)}</div><div class="sub">a pagar aos professores</div></div>
   </div>`;
-}
 
-function relProfBlock(rel, prefix) {
-  const comProf = rel.profs.filter(p => p.nome !== '');
-  const semProf = rel.profs.find(p => p.nome === '');
-  let html = '';
-  const color = (pct) => pct >= 70 ? 'var(--green)' : pct >= 40 ? 'var(--yellow)' : 'var(--red)';
-  if (comProf.length) {
-    html += `<div class="rel-section-title">Por Professor — ${comProf.length} ativo${comProf.length!==1?'s':''}</div>`;
-    html += `<div class="rel-prof-grid">${comProf.map((p,i)=>relProfCard(p,prefix+'p'+i,color(p.total?Math.round(p.fez/p.total*100):0))).join('')}</div>`;
+  if (!d.totalPositivos) {
+    html += `<div class="rel-section-title" style="margin:0 28px">Nenhum aluno reduziu o percentual de gordura entre as duas últimas avaliações.</div>`;
+    el.innerHTML = html;
+    return;
   }
-  if (semProf) {
-    html += `<div class="rel-section-title">Sem Professor — ${semProf.total} aluno${semProf.total!==1?'s':''}</div>`;
-    html += `<div class="rel-prof-grid">${relProfCard(semProf,prefix+'sp',color(semProf.total?Math.round(semProf.fez/semProf.total*100):0))}</div>`;
-  }
-  return html;
-}
 
-function renderRelatorio() {
-  const el  = document.getElementById('relContent');
-  const [r1, r2] = relData;
-  if (!r1 && !r2) { el.innerHTML = ''; return; }
-
-  let html = '';
-
-  // Barra de comparação (somente quando ambos estão prontos)
-  if (r1 && r2) {
-    const delta = (a, b) => {
-      const d = b - a;
-      const sign = d > 0 ? '+' : '';
-      const col  = d > 0 ? 'var(--green)' : d < 0 ? 'var(--red)' : 'var(--gray-m)';
-      return `<span style="color:${col};font-size:.72rem;font-weight:900">${sign}${d}</span>`;
-    };
-    const deltaPct = (a, b) => {
-      const d = b - a;
-      const sign = d > 0 ? '+' : '';
-      const col  = d > 0 ? 'var(--green)' : d < 0 ? 'var(--red)' : 'var(--gray-m)';
-      return `<span style="color:${col};font-size:.72rem;font-weight:900">${sign}${d}%</span>`;
-    };
-    html += `<div class="rel-compare-bar">
-      <div class="rel-compare-title">Comparação: <em>${escHtml(r1.nome)}</em> vs <em>${escHtml(r2.nome)}</em></div>
-      <div class="rel-compare-grid">
-        <div class="rel-cmp-item"><div class="lbl">Entradas</div><div>${r1.total} → ${r2.total} ${delta(r1.total,r2.total)}</div></div>
-        <div class="rel-cmp-item"><div class="lbl">Convertidos</div><div>${r1.totalConv} → ${r2.totalConv} ${delta(r1.totalConv,r2.totalConv)}</div></div>
-        <div class="rel-cmp-item"><div class="lbl">Rematrículas</div><div>${r1.totalRemat} → ${r2.totalRemat} ${delta(r1.totalRemat,r2.totalRemat)}</div></div>
-        <div class="rel-cmp-item"><div class="lbl">Fez Diagnóstico</div><div>${r1.totalFez} → ${r2.totalFez} ${delta(r1.totalFez,r2.totalFez)}</div></div>
-        <div class="rel-cmp-item"><div class="lbl">Sem Diagnóstico</div><div>${r1.totalNao} → ${r2.totalNao} ${delta(r1.totalNao,r2.totalNao)}</div></div>
-        <div class="rel-cmp-item"><div class="lbl">Cobertura</div><div>${r1.pct}% → ${r2.pct}% ${deltaPct(r1.pct,r2.pct)}</div></div>
-      </div>
+  d.meses.forEach((mes, mi) => {
+    html += `<div class="rel-mes-header">
+      <span class="rel-month-badge">${mes.alunos.length}</span>
+      <span class="rel-mes-nome">${escHtml(mes.label)}</span>
+      <span class="rel-bonus-pill">${fmtBRL(mes.totalBonus)}</span>
     </div>`;
-  }
-
-  // Mês 1
-  if (r1) {
-    html += `<div class="rel-mes-header"><span class="rel-month-badge">Mês 1</span> <span class="rel-mes-nome">${escHtml(r1.nome)}</span></div>`;
-    html += relKpiBlock(r1, 'm1');
-    html += relProfBlock(r1, 'm1');
-  }
-
-  // Mês 2
-  if (r2) {
-    html += `<div class="rel-mes-header" style="margin-top:28px"><span class="rel-month-badge" style="background:rgba(167,139,250,.15);color:#A78BFA;border-color:rgba(167,139,250,.3)">Mês 2</span> <span class="rel-mes-nome">${escHtml(r2.nome)}</span></div>`;
-    html += relKpiBlock(r2, 'm2');
-    html += relProfBlock(r2, 'm2');
-  }
+    html += `<div class="rel-prof-grid" style="padding:0 28px;margin-bottom:14px">
+      ${mes.professores.map((p, pi) => calcProfCard(p, `c${mi}p${pi}`, mes.totalBonus)).join('')}
+    </div>`;
+    html += `<div class="table-wrap" style="padding-top:0">
+      <table class="data-table">
+        <thead><tr>
+          <th>Aluno</th><th>Professor</th>
+          <th>% Antes</th><th>% Depois</th><th>Variação</th><th>Bônus</th>
+          <th>Data Anterior</th><th>Data Recente</th><th>Nº Avaliações</th>
+        </tr></thead>
+        <tbody>
+          ${mes.alunos.map(a => `<tr>
+            <td>${a.encontrado ? escHtml(a.nome) : `<span class="cpf-mono">${fmtCPF(a.cpf)}</span> <span style="color:var(--gray-m);font-size:.68rem">(não encontrado)</span>`}</td>
+            <td>${escHtml(a.professor) || '<span style="color:var(--gray-m)">—</span>'}</td>
+            <td>${a.fatAntes.toFixed(1)}%</td>
+            <td>${a.fatDepois.toFixed(1)}%</td>
+            <td><span style="color:var(--green);font-weight:900;font-style:italic">${a.delta}%</span></td>
+            <td>${a.bonus ? `<span style="color:var(--green);font-weight:900;font-style:italic">${fmtBRL(a.bonus)}</span>` : '<span style="color:var(--gray-m)">—</span>'}</td>
+            <td style="font-size:.78rem">${a.dataAntes.toLocaleDateString('pt-BR')}</td>
+            <td style="font-size:.78rem">${a.dataDepois.toLocaleDateString('pt-BR')}</td>
+            <td style="text-align:center">${a.totalAvaliacoes}</td>
+          </tr>`).join('')}
+        </tbody>
+      </table>
+    </div>`;
+  });
 
   el.innerHTML = html;
 }
@@ -1212,51 +1131,45 @@ function toggleRelDetail(id) {
   const el  = document.getElementById(id);
   const btn = el.previousElementSibling;
   const open = el.classList.toggle('open');
-  btn.textContent = (open ? '▾' : '▸') + ' Ver lista de alunos';
+  btn.textContent = (open ? '▾' : '▸') + ' Ver alunos';
 }
 
-function exportRelatorio() {
-  const meses = relData.filter(Boolean);
-  if (!meses.length) return;
+function exportCalculadora() {
+  const d = calcData;
+  if (!d || !d.totalPositivos) return;
   const wb = XLSX.utils.book_new();
 
-  // Resumo comparativo
-  const header = ['Indicador', ...meses.map(r => r.nome)];
-  const rows = [
-    ['Total de Entradas',    ...meses.map(r => r.total)],
-    ['Convertidos',          ...meses.map(r => r.totalConv)],
-    ['Rematrículas',         ...meses.map(r => r.totalRemat)],
-    ['Fez Diagnóstico',      ...meses.map(r => r.totalFez)],
-    ['Não Fez Diagnóstico',  ...meses.map(r => r.totalNao)],
-    ['Cobertura (%)',        ...meses.map(r => r.pct)],
-  ];
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...rows]), 'Resumo');
-
-  // Por Professor
-  const allProfs = [...new Set(meses.flatMap(r => r.profs.map(p => p.nome)))];
-  const profHeader = ['Professor', ...meses.flatMap(r => [`${r.nome} - Entradas`, `${r.nome} - Fez`, `${r.nome} - Não Fez`, `${r.nome} - Cobertura %`])];
-  const profRows = allProfs.map(nome => {
-    const cols = meses.flatMap(r => {
-      const p = r.profs.find(x => x.nome === nome);
-      if (!p) return [0, 0, 0, 0];
-      return [p.total, p.fez, p.nao, p.total ? Math.round(p.fez/p.total*100) : 0];
-    });
-    return [nome || '(Sem professor)', ...cols];
-  });
-  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([profHeader, ...profRows]), 'Por Professor');
-
-  // Por Aluno (cada mês em aba separada)
-  meses.forEach(r => {
-    const aRows = [['Nome','CPF','Professor','Tipo Entrada','Fez Diagnóstico','Telefone']];
-    for (const e of r.entradas) {
-      const tipo = e.isConv && e.isRemat ? 'Conv+Remat' : e.isConv ? 'Convertido' : 'Rematrícula';
-      aRows.push([e.nome, e.cpf, e.professor, tipo, e.fezDiag ? 'Sim' : 'Não', e.tel]);
+  // Detalhado — todos os alunos com resultado positivo
+  const rows = [['Mês','Aluno','CPF','Professor','% Antes','% Depois','Variação','Bônus (R$)','Data Anterior','Data Recente','Nº Avaliações']];
+  for (const mes of d.meses) {
+    for (const a of mes.alunos) {
+      rows.push([
+        mes.label,
+        a.encontrado ? a.nome : '(não encontrado)',
+        fmtCPF(a.cpf),
+        a.professor,
+        a.fatAntes,
+        a.fatDepois,
+        a.delta,
+        a.bonus,
+        a.dataAntes.toLocaleDateString('pt-BR'),
+        a.dataDepois.toLocaleDateString('pt-BR'),
+        a.totalAvaliacoes,
+      ]);
     }
-    const sheetName = r.nome.slice(0,31);
-    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(aRows), sheetName);
-  });
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(rows), 'Resultados Positivos');
 
-  XLSX.writeFile(wb, 'relatorio_entradas.xlsx');
+  // Bônus por professor / mês
+  const profRows = [['Mês','Professor','Alunos com Resultado','Bônus Total (R$)']];
+  for (const mes of d.meses) {
+    for (const p of mes.professores) {
+      profRows.push([mes.label, p.nome || '(Sem professor)', p.alunos.length, p.totalBonus]);
+    }
+  }
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(profRows), 'Bônus por Professor');
+
+  XLSX.writeFile(wb, 'calculadora_resultado.xlsx');
 }
 
 function filterByProfessor(prof) {
