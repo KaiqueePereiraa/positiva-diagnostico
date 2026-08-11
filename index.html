@@ -210,6 +210,11 @@ input[type=file]{display:none}
 .rel-mes-header{display:flex;align-items:center;gap:10px;padding:4px 28px 10px;flex-wrap:wrap}
 .rel-mes-nome{font-size:.9rem;font-weight:900;font-style:italic;color:var(--white)}
 .rel-bonus-pill{font-size:.68rem;font-weight:900;font-style:italic;background:rgba(190,245,117,.12);color:var(--green);border:1px solid rgba(190,245,117,.3);border-radius:20px;padding:3px 10px;margin-left:auto}
+.calc-expand-btn{background:none;border:none;color:var(--gray-m);cursor:pointer;font-size:.85rem;padding:2px 4px;line-height:1;transition:color .15s}
+.calc-expand-btn:hover{color:var(--green)}
+.calc-detail-row td{background:rgba(255,255,255,.02);padding:10px 16px !important}
+.calc-detail-grid{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:.74rem;color:var(--gray-l)}
+.calc-detail-grid b{color:var(--gray-m);font-weight:400}
 @media(max-width:640px){.rel-month-files{grid-template-columns:1fr}.rel-months-grid{padding:0 14px 20px}.rel-compare-bar,.rel-mes-header{margin-left:14px;margin-right:14px}}
 .prof-card{background:var(--card);border-radius:10px;padding:16px;border-left:4px solid var(--blue);cursor:pointer;transition:transform .15s,background .2s}
 .prof-card:hover{transform:translateY(-2px);background:rgba(255,255,255,.04)}
@@ -1130,29 +1135,27 @@ function renderCalculadora() {
       html += `<div class="table-wrap" style="padding-top:0">
         <table class="data-table">
           <thead><tr>
-            <th>Aluno</th><th>Professor</th>
-            <th>Peso Recorde Ant.</th><th>Peso Atual</th>
-            <th>% Gordura Recorde Ant.</th><th>% Gordura Atual</th>
-            <th>Recorde Anterior (kg gordura)</th><th>Atual (kg gordura)</th>
-            <th>Kg Superado</th><th>Bônus</th>
-            <th>Data Recorde Ant.</th><th>Data Atual</th><th>Nº Avaliações</th>
+            <th></th><th>Aluno</th><th>Professor</th>
+            <th>Kg Superado</th><th>Bônus</th><th>Data Atual</th><th>Nº Avaliações</th>
           </tr></thead>
           <tbody>
-            ${mes.elegiveis.map(a => `<tr>
+            ${mes.elegiveis.map((a, ai) => { const rid = `elegDet-${mi}-${ai}`; return `<tr>
+              <td><button class="calc-expand-btn" onclick="toggleCalcDetail('${rid}',this)">▸</button></td>
               <td>${escHtml(a.nome)}</td>
               <td>${escHtml(a.professor) || '<span style="color:var(--gray-m)">—</span>'}</td>
-              <td>${a.pesoAntes.toFixed(1)}kg</td>
-              <td>${a.pesoDepois.toFixed(1)}kg</td>
-              <td>${a.fatAntes.toFixed(1)}%</td>
-              <td>${a.fatDepois.toFixed(1)}%</td>
-              <td>${a.gorduraKgAntes.toFixed(2)}kg</td>
-              <td>${a.gorduraKgDepois.toFixed(2)}kg</td>
               <td><span style="color:var(--green);font-weight:900;font-style:italic">-${a.kgPerdido.toFixed(2)}kg</span></td>
               <td>${a.bonus ? `<span style="color:var(--green);font-weight:900;font-style:italic">${fmtBRL(a.bonus)}</span>` : '<span style="color:var(--gray-m)">—</span>'}</td>
-              <td style="font-size:.78rem">${a.dataAntes.toLocaleDateString('pt-BR')}</td>
               <td style="font-size:.78rem">${a.dataDepois.toLocaleDateString('pt-BR')}</td>
               <td style="text-align:center">${a.totalAvaliacoes}</td>
-            </tr>`).join('')}
+            </tr>
+            <tr class="calc-detail-row" id="${rid}" style="display:none"><td colspan="7">
+              <div class="calc-detail-grid">
+                <div><b>Peso:</b> ${a.pesoAntes.toFixed(1)}kg → ${a.pesoDepois.toFixed(1)}kg</div>
+                <div><b>% Gordura:</b> ${a.fatAntes.toFixed(1)}% → ${a.fatDepois.toFixed(1)}%</div>
+                <div><b>Gordura (kg):</b> ${a.gorduraKgAntes.toFixed(2)}kg → ${a.gorduraKgDepois.toFixed(2)}kg</div>
+                <div><b>Data do recorde anterior:</b> ${a.dataAntes.toLocaleDateString('pt-BR')}</div>
+              </div>
+            </td></tr>`; }).join('')}
           </tbody>
         </table>
       </div>`;
@@ -1165,27 +1168,24 @@ function renderCalculadora() {
       html += `<div class="table-wrap" style="padding-top:0">
         <table class="data-table">
           <thead><tr>
-            <th>CPF</th>
-            <th>Peso Recorde Ant.</th><th>Peso Atual</th>
-            <th>% Gordura Recorde Ant.</th><th>% Gordura Atual</th>
-            <th>Recorde Anterior (kg gordura)</th><th>Atual (kg gordura)</th>
-            <th>Kg Superado</th>
-            <th>Data Recorde Ant.</th><th>Data Atual</th><th>Nº Avaliações</th>
+            <th></th><th>CPF</th><th>Kg Superado</th><th>Data Atual</th><th>Nº Avaliações</th>
           </tr></thead>
           <tbody>
-            ${mes.inelegiveis.map(a => `<tr>
+            ${mes.inelegiveis.map((a, ai) => { const rid = `inelDet-${mi}-${ai}`; return `<tr>
+              <td><button class="calc-expand-btn" onclick="toggleCalcDetail('${rid}',this)">▸</button></td>
               <td><span class="cpf-mono">${fmtCPF(a.cpf)}</span></td>
-              <td>${a.pesoAntes.toFixed(1)}kg</td>
-              <td>${a.pesoDepois.toFixed(1)}kg</td>
-              <td>${a.fatAntes.toFixed(1)}%</td>
-              <td>${a.fatDepois.toFixed(1)}%</td>
-              <td>${a.gorduraKgAntes.toFixed(2)}kg</td>
-              <td>${a.gorduraKgDepois.toFixed(2)}kg</td>
               <td style="color:var(--gray-l)">-${a.kgPerdido.toFixed(2)}kg</td>
-              <td style="font-size:.78rem">${a.dataAntes.toLocaleDateString('pt-BR')}</td>
               <td style="font-size:.78rem">${a.dataDepois.toLocaleDateString('pt-BR')}</td>
               <td style="text-align:center">${a.totalAvaliacoes}</td>
-            </tr>`).join('')}
+            </tr>
+            <tr class="calc-detail-row" id="${rid}" style="display:none"><td colspan="5">
+              <div class="calc-detail-grid">
+                <div><b>Peso:</b> ${a.pesoAntes.toFixed(1)}kg → ${a.pesoDepois.toFixed(1)}kg</div>
+                <div><b>% Gordura:</b> ${a.fatAntes.toFixed(1)}% → ${a.fatDepois.toFixed(1)}%</div>
+                <div><b>Gordura (kg):</b> ${a.gorduraKgAntes.toFixed(2)}kg → ${a.gorduraKgDepois.toFixed(2)}kg</div>
+                <div><b>Data do recorde anterior:</b> ${a.dataAntes.toLocaleDateString('pt-BR')}</div>
+              </div>
+            </td></tr>`; }).join('')}
           </tbody>
         </table>
       </div>`;
@@ -1193,6 +1193,13 @@ function renderCalculadora() {
   });
 
   el.innerHTML = html;
+}
+
+function toggleCalcDetail(id, btn) {
+  const row = document.getElementById(id);
+  const open = row.style.display !== 'none';
+  row.style.display = open ? 'none' : 'table-row';
+  btn.textContent = open ? '▸' : '▾';
 }
 
 function toggleRelDetail(id) {
