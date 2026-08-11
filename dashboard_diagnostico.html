@@ -454,7 +454,7 @@ input[type=file]{display:none}
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
       <div>
         <div class="rel-page-title">Calculadora de Resultado</div>
-        <div class="rel-page-sub">Compara as duas avaliações mais recentes de cada aluno, mostra quem reduziu o % de gordura corporal e calcula o bônus do professor (R$ 50 por kg perdido)</div>
+        <div class="rel-page-sub">Compara as duas avaliações mais recentes de cada aluno, calcula quantos kg de gordura corporal foram perdidos (peso × % gordura) e o bônus do professor (R$ 50 por kg inteiro perdido)</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn-export" id="calcBtnExport" onclick="exportCalculadora()" style="display:none">⬇ Exportar Excel</button>
@@ -927,20 +927,22 @@ function renderProfessorView() {
 // RELATÓRIO DE ENTRADAS
 // CALCULADORA DE RESULTADO
 const MESES_PT   = ['Janeiro','Fevereiro','Março','Abril','Maio','Junho','Julho','Agosto','Setembro','Outubro','Novembro','Dezembro'];
-const BONUS_POR_KG = 50; // R$ por ponto percentual inteiro de gordura reduzido
+const BONUS_POR_KG = 50; // R$ por kg inteiro de gordura reduzido
 
 // O Data export usa parênteses full-width (｛%｝) em vários headers — casamos por
-// prefixo "fat" + "%" pra funcionar independente da variante de parêntese usada.
-function getFatPercent(row) {
+// prefixo + trecho fixo do sufixo pra funcionar independente da variante de parêntese usada.
+function getMetric(row, prefix, mustInclude) {
   for (const k of Object.keys(row)) {
     const kl = k.toLowerCase();
-    if (kl.startsWith('fat') && kl.includes('%')) {
+    if (kl.startsWith(prefix) && (!mustInclude || kl.includes(mustInclude))) {
       const v = parseFloat(row[k]);
       return isNaN(v) ? null : v;
     }
   }
   return null;
 }
+const getFatPercent = row => getMetric(row, 'fat', '%');
+const getWeightKg   = row => getMetric(row, 'weight', 'kg');
 
 function parseDiagDate(row) {
   let dt = row['gmtCreate'];
@@ -974,10 +976,12 @@ function buildCalculadora(diagnosticos, clientes) {
   for (const row of diagnosticos) {
     const cpf = normCPF(row['name']);
     if (!cpf || cpf.length < 9) continue;
-    const fat  = getFatPercent(row);
-    const date = parseDiagDate(row);
-    if (fat === null || !date) continue;
-    (groups[cpf] ||= []).push({ fat, date });
+    const fat    = getFatPercent(row);
+    const weight = getWeightKg(row);
+    const date   = parseDiagDate(row);
+    // peso e %gordura são obrigatórios pra converter em kg
+    if (fat === null || weight === null || !date) continue;
+    (groups[cpf] ||= []).push({ fat, weight, date });
   }
 
   // para quem tem 2+ diagnósticos, compara as duas avaliações mais recentes
@@ -985,22 +989,33 @@ function buildCalculadora(diagnosticos, clientes) {
   for (const [cpf, arr] of Object.entries(groups)) {
     if (arr.length < 2) continue;
     arr.sort((a, b) => a.date - b.date);
-    const prev  = arr[arr.length - 2];
-    const last  = arr[arr.length - 1];
-    const delta = +(last.fat - prev.fat).toFixed(1);
-    const info  = infoMap[cpf] || null;
-    const positivo = delta < 0;
-    // bônus só conta pontos inteiros perdidos: 1,5 = R$50, 0,7 = R$0
-    const bonus = positivo ? Math.floor(Math.abs(delta)) * BONUS_POR_KG : 0;
+    const prev = arr[arr.length - 2];
+    const last = arr[arr.length - 1];
+
+    // peso de gordura em kg = peso total (kg) × %gordura — calculado em cada avaliação
+    // individualmente, então funciona mesmo se o peso total da balança não mudou
+    // (ex: ganhou músculo e perdeu gordura na mesma proporção).
+    const gorduraKgAntes  = +(prev.weight * prev.fat / 100).toFixed(2);
+    const gorduraKgDepois = +(last.weight * last.fat / 100).toFixed(2);
+    const kgPerdido = +(gorduraKgAntes - gorduraKgDepois).toFixed(2);
+
+    const info = infoMap[cpf] || null;
+    const positivo = kgPerdido > 0;
+    // bônus só conta kg inteiros perdidos: 1,5kg = R$50, 0,7kg = R$0
+    const bonus = positivo ? Math.floor(kgPerdido) * BONUS_POR_KG : 0;
     registros.push({
       cpf,
       nome: info?.nome || '',
       professor: info?.professor || '',
       encontrado: !!info,
       totalAvaliacoes: arr.length,
+      pesoAntes: prev.weight,
+      pesoDepois: last.weight,
       fatAntes: prev.fat,
       fatDepois: last.fat,
-      delta,
+      gorduraKgAntes,
+      gorduraKgDepois,
+      kgPerdido,
       bonus,
       dataAntes: prev.date,
       dataDepois: last.date,
@@ -1022,7 +1037,7 @@ function buildCalculadora(diagnosticos, clientes) {
 
   const meses = Object.values(mesesMap).sort((a, b) => b.key.localeCompare(a.key));
   meses.forEach(m => {
-    m.alunos.sort((a, b) => a.delta - b.delta);
+    m.alunos.sort((a, b) => b.kgPerdido - a.kgPerdido);
     m.totalBonus = m.alunos.reduce((s, a) => s + a.bonus, 0);
 
     const profMap = {};
@@ -1042,7 +1057,7 @@ function buildCalculadora(diagnosticos, clientes) {
     totalComparados: registros.length,
     totalPositivos:  positivos.length,
     pct: registros.length ? Math.round((positivos.length / registros.length) * 100) : 0,
-    reducaoMedia: positivos.length ? +(positivos.reduce((s,r)=>s+r.delta,0) / positivos.length).toFixed(1) : 0,
+    reducaoMedia: positivos.length ? +(positivos.reduce((s,r)=>s+r.kgPerdido,0) / positivos.length).toFixed(2) : 0,
     totalBonus: positivos.reduce((s, r) => s + r.bonus, 0),
   };
 }
@@ -1052,7 +1067,7 @@ function calcProfCard(p, uid, monthTotalBonus) {
   const rows = p.alunos.map(a => `
     <li style="display:flex;align-items:center;gap:6px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.03)">
       <span style="font-size:.72rem;color:var(--gray-l);flex:1">${a.encontrado ? escHtml(a.nome) : fmtCPF(a.cpf) + ' (não cadastrado)'}</span>
-      <span style="font-size:.68rem;color:var(--green);font-weight:700">${a.delta}%</span>
+      <span style="font-size:.68rem;color:var(--green);font-weight:700">-${a.kgPerdido.toFixed(1)}kg</span>
       <span style="font-size:.68rem;color:var(--gray-m);min-width:52px;text-align:right">${a.bonus ? fmtBRL(a.bonus) : '—'}</span>
     </li>`).join('');
   return `<div class="rel-prof-card">
@@ -1080,13 +1095,13 @@ function renderCalculadora() {
 
   let html = `<div class="rel-kpis" style="padding:0 28px;margin-bottom:24px">
     <div class="rel-kpi rk-total"><div class="lbl">Comparados</div><div class="val">${d.totalComparados}</div><div class="sub">alunos com 2+ avaliações</div></div>
-    <div class="rel-kpi rk-fez"><div class="lbl">Resultado Positivo</div><div class="val">${d.totalPositivos}</div><div class="sub">reduziram % de gordura</div></div>
+    <div class="rel-kpi rk-fez"><div class="lbl">Resultado Positivo</div><div class="val">${d.totalPositivos}</div><div class="sub">perderam gordura (kg)</div></div>
     <div class="rel-kpi rk-pct"><div class="lbl">Taxa de Sucesso</div><div class="val">${d.pct}%</div><div class="sub">dos comparados</div></div>
     <div class="rel-kpi rk-conv"><div class="lbl">Bônus Total</div><div class="val" style="font-size:1.5rem">${fmtBRL(d.totalBonus)}</div><div class="sub">a pagar aos professores</div></div>
   </div>`;
 
   if (!d.totalPositivos) {
-    html += `<div class="rel-section-title" style="margin:0 28px">Nenhum aluno reduziu o percentual de gordura entre as duas últimas avaliações.</div>`;
+    html += `<div class="rel-section-title" style="margin:0 28px">Nenhum aluno reduziu o peso de gordura (kg) entre as duas últimas avaliações.</div>`;
     el.innerHTML = html;
     return;
   }
@@ -1104,16 +1119,20 @@ function renderCalculadora() {
       <table class="data-table">
         <thead><tr>
           <th>Aluno</th><th>Professor</th>
-          <th>% Antes</th><th>% Depois</th><th>Variação</th><th>Bônus</th>
+          <th>Peso Antes</th><th>Peso Depois</th>
+          <th>% Gordura Antes</th><th>% Gordura Depois</th>
+          <th>Kg Gordura Perdido</th><th>Bônus</th>
           <th>Data Anterior</th><th>Data Recente</th><th>Nº Avaliações</th>
         </tr></thead>
         <tbody>
           ${mes.alunos.map(a => `<tr>
             <td>${a.encontrado ? escHtml(a.nome) : `<span class="cpf-mono">${fmtCPF(a.cpf)}</span> <span style="color:var(--gray-m);font-size:.68rem">(não encontrado)</span>`}</td>
             <td>${escHtml(a.professor) || '<span style="color:var(--gray-m)">—</span>'}</td>
+            <td>${a.pesoAntes.toFixed(1)}kg</td>
+            <td>${a.pesoDepois.toFixed(1)}kg</td>
             <td>${a.fatAntes.toFixed(1)}%</td>
             <td>${a.fatDepois.toFixed(1)}%</td>
-            <td><span style="color:var(--green);font-weight:900;font-style:italic">${a.delta}%</span></td>
+            <td><span style="color:var(--green);font-weight:900;font-style:italic">-${a.kgPerdido.toFixed(2)}kg</span></td>
             <td>${a.bonus ? `<span style="color:var(--green);font-weight:900;font-style:italic">${fmtBRL(a.bonus)}</span>` : '<span style="color:var(--gray-m)">—</span>'}</td>
             <td style="font-size:.78rem">${a.dataAntes.toLocaleDateString('pt-BR')}</td>
             <td style="font-size:.78rem">${a.dataDepois.toLocaleDateString('pt-BR')}</td>
@@ -1140,7 +1159,7 @@ function exportCalculadora() {
   const wb = XLSX.utils.book_new();
 
   // Detalhado — todos os alunos com resultado positivo
-  const rows = [['Mês','Aluno','CPF','Professor','% Antes','% Depois','Variação','Bônus (R$)','Data Anterior','Data Recente','Nº Avaliações']];
+  const rows = [['Mês','Aluno','CPF','Professor','Peso Antes (kg)','Peso Depois (kg)','% Gordura Antes','% Gordura Depois','Kg Gordura Perdido','Bônus (R$)','Data Anterior','Data Recente','Nº Avaliações']];
   for (const mes of d.meses) {
     for (const a of mes.alunos) {
       rows.push([
@@ -1148,9 +1167,11 @@ function exportCalculadora() {
         a.encontrado ? a.nome : '(não encontrado)',
         fmtCPF(a.cpf),
         a.professor,
+        a.pesoAntes,
+        a.pesoDepois,
         a.fatAntes,
         a.fatDepois,
-        a.delta,
+        a.kgPerdido,
         a.bonus,
         a.dataAntes.toLocaleDateString('pt-BR'),
         a.dataDepois.toLocaleDateString('pt-BR'),
