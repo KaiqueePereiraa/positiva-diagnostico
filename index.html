@@ -454,7 +454,7 @@ input[type=file]{display:none}
     <div style="display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:10px">
       <div>
         <div class="rel-page-title">Calculadora de Resultado</div>
-        <div class="rel-page-sub">Compara as duas avaliações mais recentes de cada aluno, calcula quantos kg de gordura corporal foram perdidos (peso × % gordura) e o bônus do professor (R$ 50 por kg inteiro perdido)</div>
+        <div class="rel-page-sub">Compara a avaliação mais recente de cada aluno com o menor kg de gordura já registrado antes (peso × % gordura) e calcula o bônus do professor (R$ 50 por kg inteiro superado). Só paga quando bate um novo recorde pessoal — resultado antigo repetido não gera bônus de novo.</div>
       </div>
       <div style="display:flex;gap:8px;align-items:center">
         <button class="btn-export" id="calcBtnExport" onclick="exportCalculadora()" style="display:none">⬇ Exportar Excel</button>
@@ -984,24 +984,28 @@ function buildCalculadora(diagnosticos, clientes) {
     (groups[cpf] ||= []).push({ fat, weight, date });
   }
 
-  // para quem tem 2+ diagnósticos, compara as duas avaliações mais recentes
+  // Para quem tem 2+ diagnósticos, compara a avaliação mais recente com o MENOR
+  // registro de gordura (kg) que a pessoa já teve em qualquer avaliação anterior
+  // — não só a penúltima. Isso é o "escudo anti-sanfona": só paga bônus quando a
+  // pessoa bate um novo recorde pessoal, nunca por voltar a um patamar que ela já
+  // tinha alcançado antes (ex: 20→10→30→20kg não paga na 4ª, porque 20 > recorde de 10).
   const registros = [];
-  for (const [cpf, arr] of Object.entries(groups)) {
-    if (arr.length < 2) continue;
-    arr.sort((a, b) => a.date - b.date);
-    const prev = arr[arr.length - 2];
+  for (const [cpf, arrRaw] of Object.entries(groups)) {
+    if (arrRaw.length < 2) continue;
+    const arr = arrRaw
+      .slice()
+      .sort((a, b) => a.date - b.date)
+      // peso de gordura em kg = peso total (kg) × %gordura, calculado por avaliação
+      .map(a => ({ ...a, gorduraKg: +(a.weight * a.fat / 100).toFixed(2) }));
+
     const last = arr[arr.length - 1];
+    const anteriores = arr.slice(0, -1);
+    const recorde = anteriores.reduce((min, a) => a.gorduraKg < min.gorduraKg ? a : min, anteriores[0]);
 
-    // peso de gordura em kg = peso total (kg) × %gordura — calculado em cada avaliação
-    // individualmente, então funciona mesmo se o peso total da balança não mudou
-    // (ex: ganhou músculo e perdeu gordura na mesma proporção).
-    const gorduraKgAntes  = +(prev.weight * prev.fat / 100).toFixed(2);
-    const gorduraKgDepois = +(last.weight * last.fat / 100).toFixed(2);
-    const kgPerdido = +(gorduraKgAntes - gorduraKgDepois).toFixed(2);
-
+    const kgPerdido = +(recorde.gorduraKg - last.gorduraKg).toFixed(2);
     const info = infoMap[cpf] || null;
-    const positivo = kgPerdido > 0;
-    // bônus só conta kg inteiros perdidos: 1,5kg = R$50, 0,7kg = R$0
+    const positivo = kgPerdido > 0; // precisa ser estritamente menor que o recorde anterior
+    // bônus só conta kg inteiros perdidos além do recorde: 1,5kg = R$50, 0,7kg = R$0
     const bonus = positivo ? Math.floor(kgPerdido) * BONUS_POR_KG : 0;
     registros.push({
       cpf,
@@ -1009,15 +1013,15 @@ function buildCalculadora(diagnosticos, clientes) {
       professor: info?.professor || '',
       encontrado: !!info,
       totalAvaliacoes: arr.length,
-      pesoAntes: prev.weight,
+      pesoAntes: recorde.weight,
       pesoDepois: last.weight,
-      fatAntes: prev.fat,
+      fatAntes: recorde.fat,
       fatDepois: last.fat,
-      gorduraKgAntes,
-      gorduraKgDepois,
+      gorduraKgAntes: recorde.gorduraKg,
+      gorduraKgDepois: last.gorduraKg,
       kgPerdido,
       bonus,
-      dataAntes: prev.date,
+      dataAntes: recorde.date,
       dataDepois: last.date,
       positivo,
     });
@@ -1101,13 +1105,13 @@ function renderCalculadora() {
 
   let html = `<div class="rel-kpis" style="padding:0 28px;margin-bottom:24px">
     <div class="rel-kpi rk-total"><div class="lbl">Comparados</div><div class="val">${d.totalComparados}</div><div class="sub">alunos com 2+ avaliações</div></div>
-    <div class="rel-kpi rk-fez"><div class="lbl">Resultado Positivo</div><div class="val">${d.totalPositivos}</div><div class="sub">perderam gordura (kg)</div></div>
+    <div class="rel-kpi rk-fez"><div class="lbl">Resultado Positivo</div><div class="val">${d.totalPositivos}</div><div class="sub">bateram novo recorde (kg)</div></div>
     <div class="rel-kpi rk-pct"><div class="lbl">Taxa de Sucesso</div><div class="val">${d.pct}%</div><div class="sub">dos comparados</div></div>
     <div class="rel-kpi rk-conv"><div class="lbl">Bônus Total</div><div class="val" style="font-size:1.5rem">${fmtBRL(d.totalBonus)}</div><div class="sub">a pagar aos professores</div></div>
   </div>`;
 
   if (!d.totalPositivos) {
-    html += `<div class="rel-section-title" style="margin:0 28px">Nenhum aluno reduziu o peso de gordura (kg) entre as duas últimas avaliações.</div>`;
+    html += `<div class="rel-section-title" style="margin:0 28px">Nenhum aluno bateu um novo recorde de gordura (kg) na avaliação mais recente.</div>`;
     el.innerHTML = html;
     return;
   }
@@ -1127,10 +1131,11 @@ function renderCalculadora() {
         <table class="data-table">
           <thead><tr>
             <th>Aluno</th><th>Professor</th>
-            <th>Peso Antes</th><th>Peso Depois</th>
-            <th>% Gordura Antes</th><th>% Gordura Depois</th>
-            <th>Kg Gordura Perdido</th><th>Bônus</th>
-            <th>Data Anterior</th><th>Data Recente</th><th>Nº Avaliações</th>
+            <th>Peso Recorde Ant.</th><th>Peso Atual</th>
+            <th>% Gordura Recorde Ant.</th><th>% Gordura Atual</th>
+            <th>Recorde Anterior (kg gordura)</th><th>Atual (kg gordura)</th>
+            <th>Kg Superado</th><th>Bônus</th>
+            <th>Data Recorde Ant.</th><th>Data Atual</th><th>Nº Avaliações</th>
           </tr></thead>
           <tbody>
             ${mes.elegiveis.map(a => `<tr>
@@ -1140,6 +1145,8 @@ function renderCalculadora() {
               <td>${a.pesoDepois.toFixed(1)}kg</td>
               <td>${a.fatAntes.toFixed(1)}%</td>
               <td>${a.fatDepois.toFixed(1)}%</td>
+              <td>${a.gorduraKgAntes.toFixed(2)}kg</td>
+              <td>${a.gorduraKgDepois.toFixed(2)}kg</td>
               <td><span style="color:var(--green);font-weight:900;font-style:italic">-${a.kgPerdido.toFixed(2)}kg</span></td>
               <td>${a.bonus ? `<span style="color:var(--green);font-weight:900;font-style:italic">${fmtBRL(a.bonus)}</span>` : '<span style="color:var(--gray-m)">—</span>'}</td>
               <td style="font-size:.78rem">${a.dataAntes.toLocaleDateString('pt-BR')}</td>
@@ -1159,10 +1166,11 @@ function renderCalculadora() {
         <table class="data-table">
           <thead><tr>
             <th>CPF</th>
-            <th>Peso Antes</th><th>Peso Depois</th>
-            <th>% Gordura Antes</th><th>% Gordura Depois</th>
-            <th>Kg Gordura Perdido</th>
-            <th>Data Anterior</th><th>Data Recente</th><th>Nº Avaliações</th>
+            <th>Peso Recorde Ant.</th><th>Peso Atual</th>
+            <th>% Gordura Recorde Ant.</th><th>% Gordura Atual</th>
+            <th>Recorde Anterior (kg gordura)</th><th>Atual (kg gordura)</th>
+            <th>Kg Superado</th>
+            <th>Data Recorde Ant.</th><th>Data Atual</th><th>Nº Avaliações</th>
           </tr></thead>
           <tbody>
             ${mes.inelegiveis.map(a => `<tr>
@@ -1171,6 +1179,8 @@ function renderCalculadora() {
               <td>${a.pesoDepois.toFixed(1)}kg</td>
               <td>${a.fatAntes.toFixed(1)}%</td>
               <td>${a.fatDepois.toFixed(1)}%</td>
+              <td>${a.gorduraKgAntes.toFixed(2)}kg</td>
+              <td>${a.gorduraKgDepois.toFixed(2)}kg</td>
               <td style="color:var(--gray-l)">-${a.kgPerdido.toFixed(2)}kg</td>
               <td style="font-size:.78rem">${a.dataAntes.toLocaleDateString('pt-BR')}</td>
               <td style="font-size:.78rem">${a.dataDepois.toLocaleDateString('pt-BR')}</td>
@@ -1198,7 +1208,7 @@ function exportCalculadora() {
   const wb = XLSX.utils.book_new();
 
   // Detalhado — todos os alunos com resultado positivo (elegíveis e não elegíveis)
-  const rows = [['Mês','Elegível p/ Bônus','Aluno','CPF','Professor','Peso Antes (kg)','Peso Depois (kg)','% Gordura Antes','% Gordura Depois','Kg Gordura Perdido','Bônus (R$)','Data Anterior','Data Recente','Nº Avaliações']];
+  const rows = [['Mês','Elegível p/ Bônus','Aluno','CPF','Professor','Peso Recorde Ant. (kg)','Peso Atual (kg)','% Gordura Recorde Ant.','% Gordura Atual','Recorde Anterior (kg gordura)','Atual (kg gordura)','Kg Superado','Bônus (R$)','Data Recorde Ant.','Data Atual','Nº Avaliações']];
   for (const mes of d.meses) {
     for (const a of mes.alunos) {
       rows.push([
@@ -1211,6 +1221,8 @@ function exportCalculadora() {
         a.pesoDepois,
         a.fatAntes,
         a.fatDepois,
+        a.gorduraKgAntes,
+        a.gorduraKgDepois,
         a.kgPerdido,
         a.encontrado ? a.bonus : 0,
         a.dataAntes.toLocaleDateString('pt-BR'),
