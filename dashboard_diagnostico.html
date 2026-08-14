@@ -215,6 +215,10 @@ input[type=file]{display:none}
 .calc-detail-row td{background:rgba(255,255,255,.02);padding:10px 16px !important}
 .calc-detail-grid{display:flex;flex-wrap:wrap;gap:8px 24px;font-size:.74rem;color:var(--gray-l)}
 .calc-detail-grid b{color:var(--gray-m);font-weight:400}
+.calc-mes-select{background:var(--dark);border:1px solid rgba(255,255,255,.15);color:var(--white);padding:8px 12px;border-radius:7px;font-family:inherit;font-size:.78rem;outline:none;cursor:pointer;transition:border-color .2s}
+.calc-mes-select:focus{border-color:var(--green)}
+.btn-export-financeiro{background:rgba(255,159,67,.1);border-color:var(--orange);color:var(--orange)}
+.btn-export-financeiro:hover{background:rgba(255,159,67,.2)}
 @media(max-width:640px){.rel-month-files{grid-template-columns:1fr}.rel-months-grid{padding:0 14px 20px}.rel-compare-bar,.rel-mes-header{margin-left:14px;margin-right:14px}}
 .prof-card{background:var(--card);border-radius:10px;padding:16px;border-left:4px solid var(--blue);cursor:pointer;transition:transform .15s,background .2s}
 .prof-card:hover{transform:translateY(-2px);background:rgba(255,255,255,.04)}
@@ -461,7 +465,9 @@ input[type=file]{display:none}
         <div class="rel-page-title">Calculadora de Resultado</div>
         <div class="rel-page-sub">Compara a avaliação mais recente de cada aluno com o menor kg de gordura já registrado antes (peso × % gordura) e calcula o bônus do professor (R$ 50 por kg inteiro superado). Só paga quando bate um novo recorde pessoal — resultado antigo repetido não gera bônus de novo.</div>
       </div>
-      <div style="display:flex;gap:8px;align-items:center">
+      <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+        <select class="calc-mes-select" id="calcMesExport" style="display:none"></select>
+        <button class="btn-export btn-export-financeiro" id="calcBtnFinanceiro" onclick="exportFolhaPagamento()" style="display:none">💰 Exportar p/ Financeiro</button>
         <button class="btn-export" id="calcBtnExport" onclick="exportCalculadora()" style="display:none">⬇ Exportar Excel</button>
         <button class="btn-trocar" id="calcBtnReset" onclick="resetCalculadora()" style="display:none">↺ Novo cálculo</button>
       </div>
@@ -783,6 +789,7 @@ async function processCalculadora() {
     btn.textContent = '✓ Calculado';
     document.getElementById('calcBtnExport').style.display = '';
     document.getElementById('calcBtnReset').style.display  = '';
+    populateCalcMesExport();
     renderCalculadora();
     showToast('✓ Calculadora gerada com sucesso!', 'ok');
   } catch(e) {
@@ -810,7 +817,26 @@ function resetCalculadora() {
   document.getElementById('calcFiles').style.display = '';
   document.getElementById('calcBtnExport').style.display = 'none';
   document.getElementById('calcBtnReset').style.display  = 'none';
+  document.getElementById('calcBtnFinanceiro').style.display = 'none';
+  const mesSel = document.getElementById('calcMesExport');
+  mesSel.style.display = 'none';
+  mesSel.innerHTML = '';
   document.getElementById('calcContent').innerHTML = '';
+}
+
+function populateCalcMesExport() {
+  const sel = document.getElementById('calcMesExport');
+  const btnFin = document.getElementById('calcBtnFinanceiro');
+  if (!calcData || !calcData.meses.length) {
+    sel.style.display = 'none';
+    sel.innerHTML = '';
+    btnFin.style.display = 'none';
+    return;
+  }
+  sel.innerHTML = calcData.meses.map(m => `<option value="${m.key}">${escHtml(m.label)}</option>`).join('')
+    + `<option value="todos">Todos os meses</option>`;
+  sel.style.display = '';
+  btnFin.style.display = '';
 }
 
 // STORAGE
@@ -1383,6 +1409,57 @@ function exportCalculadora() {
   XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet(sanfonaRows), 'Efeito Sanfona');
 
   XLSX.writeFile(wb, 'calculadora_resultado.xlsx');
+}
+
+// Planilha enxuta pra mandar pro financeiro pagar o bônus — só quem realmente
+// recebe (bônus > R$0), agrupado por professor com subtotal, do mês escolhido
+// no seletor (ou de todos os meses de uma vez).
+function exportFolhaPagamento() {
+  const d = calcData;
+  if (!d) return;
+  const sel   = document.getElementById('calcMesExport').value;
+  const meses = sel === 'todos' ? d.meses : d.meses.filter(m => m.key === sel);
+  if (!meses.length) return;
+  const showMes = sel === 'todos';
+
+  const header = showMes
+    ? ['Mês', 'Professor', 'Aluno', 'CPF', 'Kg Superado', 'Bônus (R$)']
+    : ['Professor', 'Aluno', 'CPF', 'Kg Superado', 'Bônus (R$)'];
+  const rows = [];
+  let grandTotal = 0;
+
+  for (const mes of meses) {
+    const porProfessor = {};
+    for (const a of mes.elegiveis) {
+      if (a.bonus <= 0) continue; // financeiro só precisa de quem recebe de fato
+      const p = a.professor || '(Sem professor)';
+      (porProfessor[p] ||= []).push(a);
+    }
+    const nomesProf = Object.keys(porProfessor).sort((x, y) => x.localeCompare(y, 'pt-BR'));
+    for (const p of nomesProf) {
+      const alunos = porProfessor[p].sort((a, b) => b.bonus - a.bonus);
+      for (const a of alunos) {
+        rows.push([...(showMes ? [mes.label] : []), p, a.nome, fmtCPF(a.cpf), a.kgPerdido, a.bonus]);
+      }
+      const subtotal = alunos.reduce((s, a) => s + a.bonus, 0);
+      rows.push([...(showMes ? [''] : []), '', `Subtotal — ${p}`, '', '', subtotal]);
+      grandTotal += subtotal;
+    }
+  }
+
+  if (!rows.length) {
+    showToast('Nenhum bônus a pagar no período selecionado.', 'err');
+    return;
+  }
+  rows.push([...(showMes ? [''] : []), '', 'TOTAL GERAL', '', '', grandTotal]);
+
+  const wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([header, ...rows]), 'Folha de Pagamento');
+
+  const slug = s => String(s).normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase().replace(/[^a-z0-9]+/g, '_').replace(/^_+|_+$/g, '');
+  const fileTag = sel === 'todos' ? 'todos_os_meses' : slug(meses[0].label);
+  XLSX.writeFile(wb, `folha_pagamento_bonus_${fileTag}.xlsx`);
+  showToast('✓ Folha de pagamento exportada!', 'ok');
 }
 
 function filterByProfessor(prof) {
